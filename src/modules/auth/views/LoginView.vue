@@ -29,6 +29,17 @@ function resolveRedirectByRole() {
 async function onSubmit() {
   message.value = ''
   errors.value = []
+
+  if (!form.username.trim()) {
+    message.value = 'Ingresa tu usuario o correo electrónico.'
+    return
+  }
+
+  if (!form.password) {
+    message.value = 'Ingresa tu contraseña.'
+    return
+  }
+
   isLoading.value = true
 
   try {
@@ -41,7 +52,7 @@ async function onSubmit() {
     })
 
     if (!response?.success) {
-      message.value = response?.message ?? 'No se pudo iniciar sesion.'
+      message.value = response?.message ?? 'No se pudo iniciar sesión.'
       errors.value = Array.isArray(response?.errors) ? response.errors : []
       return
     }
@@ -53,7 +64,7 @@ async function onSubmit() {
 
     await router.push(redirectTarget)
   } catch (error) {
-    message.value = error?.message ?? 'No se pudo iniciar sesion.'
+    message.value = error?.message ?? 'No se pudo iniciar sesión.'
     errors.value = Array.isArray(error?.errors) ? error.errors : []
   } finally {
     isLoading.value = false
@@ -66,23 +77,23 @@ async function onSubmit() {
     <div class="auth-shell__hero">
       <div class="auth-shell__brand">
         <span class="auth-shell__logo"><CarFront :size="26" /></span>
-        <strong>RentixAutos</strong>
+        <strong>Rentix Autos</strong>
       </div>
       <h1>Bienvenido</h1>
-      <p>Inicia sesion para continuar</p>
+      <p>Inicia sesión para continuar con tu reserva en Ecuador.</p>
     </div>
 
     <article class="auth-card">
       <form class="auth-form" @submit.prevent="onSubmit">
         <label class="auth-field">
-          <span>Username</span>
+          <span>Usuario o correo electrónico</span>
           <div class="auth-input">
             <Mail :size="20" />
             <input
               v-model="form.username"
               type="text"
               name="username"
-              placeholder="Ingresa tu username"
+              placeholder="Ingresa tu usuario o correo"
               autocomplete="username"
               required
               :disabled="isLoading"
@@ -91,14 +102,14 @@ async function onSubmit() {
         </label>
 
         <label class="auth-field">
-          <span>Contrasena</span>
+          <span>Contraseña</span>
           <div class="auth-input">
             <LockKeyhole :size="20" />
             <input
               v-model="form.password"
               type="password"
               name="password"
-              placeholder="********"
+              placeholder="Ingresa tu contraseña"
               autocomplete="current-password"
               required
               :disabled="isLoading"
@@ -113,12 +124,12 @@ async function onSubmit() {
         </ul>
 
         <button class="auth-submit" type="submit" :disabled="isLoading">
-          {{ isLoading ? 'Ingresando...' : 'Iniciar Sesion' }}
+          {{ isLoading ? 'Ingresando...' : 'Iniciar sesión' }}
         </button>
       </form>
 
       <div class="auth-links">
-        <RouterLink to="/registro">No tienes cuenta? Registrate aqui</RouterLink>
+        <RouterLink to="/registro">¿No tienes cuenta? Regístrate aquí</RouterLink>
         <RouterLink to="/">Volver al inicio</RouterLink>
       </div>
     </article>

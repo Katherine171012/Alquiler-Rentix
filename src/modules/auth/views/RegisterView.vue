@@ -39,12 +39,12 @@ async function onSubmit() {
   errors.value = []
 
   if (form.password !== form.confirmPassword) {
-    message.value = 'Las contrasenas no coinciden.'
+    message.value = 'Las contraseñas no coinciden.'
     return
   }
 
   if (!form.aceptaTerminos) {
-    message.value = 'Debes aceptar los terminos para continuar.'
+    message.value = 'Debes aceptar los términos para continuar.'
     return
   }
 
@@ -100,22 +100,22 @@ async function onSubmit() {
     <div class="register-shell__hero">
       <div class="register-shell__brand">
         <span class="register-shell__logo"><CarFront :size="26" /></span>
-        <strong>RentixAutos</strong>
+        <strong>Rentix Autos</strong>
       </div>
-      <h1>Crear Cuenta</h1>
-      <p>Completa tus datos para registrarte</p>
+      <h1>Crear cuenta</h1>
+      <p>Completa tus datos para alquilar vehículos en Ecuador</p>
     </div>
 
     <article class="register-card">
       <form class="register-form" @submit.prevent="onSubmit">
         <section class="register-section">
-          <h2>Informacion Personal</h2>
+          <h2>Información personal</h2>
           <div class="register-grid">
             <label class="register-field">
-              <span>Username *</span>
+              <span>Usuario *</span>
               <div class="register-input">
                 <UserRound :size="20" />
-                <input v-model="form.username" type="text" placeholder="Tu username" required />
+                <input v-model="form.username" type="text" placeholder="Crea tu usuario" required />
               </div>
             </label>
 
@@ -123,7 +123,7 @@ async function onSubmit() {
               <span>Nombre *</span>
               <div class="register-input">
                 <UserRound :size="20" />
-                <input v-model="form.nombres" type="text" placeholder="Tu nombre" required />
+                <input v-model="form.nombres" type="text" placeholder="Ingresa tu nombre" required />
               </div>
             </label>
 
@@ -131,31 +131,31 @@ async function onSubmit() {
               <span>Apellido</span>
               <div class="register-input">
                 <UserRound :size="20" />
-                <input v-model="form.apellidos" type="text" placeholder="Tu apellido" />
+                <input v-model="form.apellidos" type="text" placeholder="Ingresa tu apellido" />
               </div>
             </label>
 
             <label class="register-field">
-              <span>Email *</span>
+              <span>Correo electrónico *</span>
               <div class="register-input">
                 <Mail :size="20" />
-                <input v-model="form.correo" type="email" placeholder="tu@email.com" required />
+                <input v-model="form.correo" type="email" placeholder="tu.correo@ejemplo.com" required />
               </div>
             </label>
 
             <label class="register-field">
-              <span>Telefono</span>
+              <span>Teléfono</span>
               <div class="register-input">
                 <Phone :size="20" />
-                <input v-model="form.telefono" type="text" placeholder="+1 555-0123" />
+                <input v-model="form.telefono" type="text" placeholder="+593 98 765 4321" />
               </div>
             </label>
 
             <label class="register-field">
-              <span>Tipo de Identificacion</span>
+              <span>Tipo de identificación</span>
               <div class="register-input">
                 <select v-model="form.tipoIdentificacion">
-                  <option value="CED">Cedula</option>
+                  <option value="CED">Cédula</option>
                   <option value="PAS">Pasaporte</option>
                   <option value="RUC">RUC</option>
                 </select>
@@ -163,13 +163,13 @@ async function onSubmit() {
             </label>
 
             <label class="register-field">
-              <span>Numero de Identificacion *</span>
+              <span>Número de identificación *</span>
               <div class="register-input">
                 <FileText :size="20" />
                 <input
                   v-model="form.numeroIdentificacion"
                   type="text"
-                  placeholder="Numero de identificacion"
+                  placeholder="Ingresa tu número de identificación"
                   required
                 />
               </div>
@@ -178,13 +178,13 @@ async function onSubmit() {
         </section>
 
         <section class="register-section">
-          <h2>Direccion</h2>
+          <h2>Dirección</h2>
           <div class="register-grid">
             <label class="register-field register-field--full">
-              <span>Direccion</span>
+              <span>Dirección</span>
               <div class="register-input">
                 <MapPin :size="20" />
-                <input v-model="form.direccion" type="text" placeholder="Calle y numero" />
+                <input v-model="form.direccion" type="text" placeholder="Ej. Av. Amazonas y Eloy Alfaro, Quito" />
               </div>
             </label>
           </div>
@@ -194,21 +194,21 @@ async function onSubmit() {
           <h2>Seguridad</h2>
           <div class="register-grid">
             <label class="register-field">
-              <span>Contrasena *</span>
+              <span>Contraseña *</span>
               <div class="register-input">
                 <LockKeyhole :size="20" />
-                <input v-model="form.password" type="password" placeholder="********" required />
+                <input v-model="form.password" type="password" placeholder="Crea una contraseña segura" required />
               </div>
             </label>
 
             <label class="register-field">
-              <span>Confirmar Contrasena *</span>
+              <span>Confirmar contraseña *</span>
               <div class="register-input">
                 <LockKeyhole :size="20" />
                 <input
                   v-model="form.confirmPassword"
                   type="password"
-                  placeholder="********"
+                  placeholder="Repite tu contraseña"
                   required
                 />
               </div>
@@ -218,7 +218,7 @@ async function onSubmit() {
 
         <label class="register-check">
           <input v-model="form.aceptaTerminos" type="checkbox" />
-          <span>Acepto los terminos y condiciones y la politica de privacidad</span>
+          <span>Acepto los términos y condiciones y la política de privacidad</span>
         </label>
 
         <p v-if="message" class="register-message">{{ message }}</p>
@@ -227,12 +227,12 @@ async function onSubmit() {
         </ul>
 
         <button class="register-submit" type="submit" :disabled="isLoading">
-          {{ isLoading ? 'Creando cuenta...' : 'Crear Cuenta' }}
+          {{ isLoading ? 'Creando cuenta...' : 'Crear cuenta' }}
         </button>
 
         <p class="register-links">
-          Ya tienes cuenta?
-          <RouterLink to="/login">Iniciar sesion</RouterLink>
+          ¿Ya tienes cuenta?
+          <RouterLink to="/login">Iniciar sesión</RouterLink>
         </p>
       </form>
     </article>

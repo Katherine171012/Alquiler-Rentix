@@ -6,29 +6,30 @@ import { CarFront } from 'lucide-vue-next'
   <footer class="footer-app">
     <div class="footer-app__inner">
       <section>
-        <strong><CarFront :size="12" /> RentixAutos</strong>
-        <span>Tu mejor opcion para rentar vehiculos de calidad.</span>
+        <strong><CarFront :size="12" /> Rentix Autos</strong>
+        <span>Alquiler de vehículos seguro y rápido en Ecuador.</span>
       </section>
       <section>
-        <strong>Navegacion</strong>
+        <strong>Navegación</strong>
         <RouterLink to="/">Inicio</RouterLink>
-        <RouterLink to="/vehiculos">Vehiculos</RouterLink>
-        <RouterLink to="/login">Iniciar sesion</RouterLink>
+        <RouterLink to="/vehiculos">Vehículos</RouterLink>
+        <RouterLink to="/login">Iniciar sesión</RouterLink>
       </section>
       <section>
         <strong>Ayuda</strong>
         <a href="#">Preguntas frecuentes</a>
-        <a href="#">Terminos y condiciones</a>
-        <a href="#">Politica de privacidad</a>
+        <a href="#">Términos y condiciones</a>
+        <a href="#">Política de privacidad</a>
       </section>
       <section>
         <strong>Contacto</strong>
-        <span>Email: contacto@rentixautos.com</span>
-        <span>Tel: +1 (555) 123-4567</span>
-        <span>Horario: L-V 9AM-6PM</span>
+        <span>Quito, Ecuador</span>
+        <span>Correo: contacto@rentix.com</span>
+        <span>Teléfono: +593 98 765 4321</span>
+        <span>Horario: Lun - Vie 08:00 a 18:00</span>
       </section>
     </div>
-    <p class="footer-copy">© 2026 RentixAutos. Todos los derechos reservados.</p>
+    <p class="footer-copy">© 2026 Rentix Autos. Todos los derechos reservados.</p>
   </footer>
 </template>
 
