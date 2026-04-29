@@ -77,7 +77,7 @@ async function buscarDisponibilidad() {
       },
     })
   } catch (err) {
-    error.value = err?.message ?? 'No se pudo consultar la disponibilidad para esa localizacion.'
+    error.value = err?.message ?? 'No se pudo consultar la disponibilidad para esa localización.'
   } finally {
     cargando.value = false
   }
@@ -92,12 +92,12 @@ onMounted(async () => {
   <section class="home">
     <header class="hero">
       <div class="hero__inner">
-        <span class="hero__eyebrow">RentixAutos</span>
-        <h1>Encuentra tu vehiculo ideal</h1>
-        <p>Reserva rapido, compara categorias y elige el auto perfecto para tu proximo viaje.</p>
+        <span class="hero__eyebrow">Rentix Autos Ecuador</span>
+        <h1>Encuentra tu vehículo ideal</h1>
+        <p>Reserva rápido, compara categorías y elige el auto perfecto para tu próximo viaje en Ecuador.</p>
         <form class="hero__search" @submit.prevent="buscarDisponibilidad">
           <label>
-            Ubicacion
+            Ubicación
             <select v-model="filtros.ubicacion" :disabled="cargandoLocalizaciones">
               <option value="">
                 {{ cargandoLocalizaciones ? 'Cargando localizaciones...' : 'Selecciona una localizacion' }}
@@ -120,7 +120,7 @@ onMounted(async () => {
             <input v-model="filtros.fechaFin" type="date" />
           </label>
           <button type="submit" class="hero__cta" :disabled="!puedeBuscar || cargando">
-            {{ cargando ? 'Buscando...' : 'Buscar Disponibilidad' }}
+            {{ cargando ? 'Buscando...' : 'Buscar disponibilidad' }}
           </button>
         </form>
       </div>
@@ -130,13 +130,13 @@ onMounted(async () => {
       <div class="benefits__inner">
         <article>
           <span class="icon-circle"><Search :size="14" /></span>
-          <strong>Busqueda Facil</strong>
+          <strong>Búsqueda fácil</strong>
           <small>Encuentra el auto ideal en segundos.</small>
         </article>
         <article>
           <span class="icon-circle"><ShieldCheck :size="14" /></span>
           <strong>Seguridad Total</strong>
-          <small>Vehiculos seguros y verificados.</small>
+          <small>Vehículos seguros y verificados.</small>
         </article>
         <article>
           <span class="icon-circle"><Clock3 :size="14" /></span>
@@ -145,17 +145,17 @@ onMounted(async () => {
         </article>
         <article>
           <span class="icon-circle"><MapPin :size="14" /></span>
-          <strong>Multiples Ubicaciones</strong>
-          <small>Oficinas en toda la ciudad.</small>
+          <strong>Múltiples ubicaciones</strong>
+          <small>Oficinas en distintos puntos de Quito.</small>
         </article>
       </div>
     </section>
 
     <section class="featured">
       <div class="featured__inner">
-        <h2>Vehiculos Destacados</h2>
-        <p class="subtitle">Descubre nuestra seleccion premium de vehiculos</p>
-        <p v-if="cargando" class="feedback">Cargando vehiculos...</p>
+        <h2>Vehículos destacados</h2>
+        <p class="subtitle">Descubre nuestra selección de vehículos disponibles en Ecuador</p>
+        <p v-if="cargando" class="feedback">Cargando vehículos...</p>
         <p v-else-if="error" class="feedback feedback--error">{{ error }}</p>
 
         <div v-else class="grid">
@@ -177,7 +177,7 @@ onMounted(async () => {
             </div>
           </article>
         </div>
-        <RouterLink class="more" to="/vehiculos">Ver todos los vehiculos</RouterLink>
+        <RouterLink class="more" to="/vehiculos">Ver todos los vehículos</RouterLink>
       </div>
     </section>
 

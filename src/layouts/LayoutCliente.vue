@@ -9,7 +9,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const currentUserName = computed(() => authStore.user?.username ?? 'Cliente Demo')
+const currentUserName = computed(() => authStore.user?.username ?? 'Cliente')
 const currentRole = computed(() => authStore.roles?.[0] ?? 'CLIENTE')
 const canAccessPanel = computed(() => authStore.hasAnyRole(ADMIN_ROLES))
 
@@ -25,7 +25,7 @@ function logout() {
       <div class="cliente-header__inner">
         <RouterLink to="/" class="cliente-brand">
           <span class="cliente-brand__logo"><CarFront :size="18" /></span>
-          <span>RentixAutos</span>
+          <span>Rentix Autos</span>
         </RouterLink>
 
         <nav class="cliente-nav">
@@ -35,7 +35,7 @@ function logout() {
           </RouterLink>
           <RouterLink to="/vehiculos">
             <CarFront :size="18" />
-            Vehiculos
+            Vehículos
           </RouterLink>
           <RouterLink to="/mi-cuenta/reservas" :class="{ active: route.path.includes('/reservas') }">
             <CalendarDays :size="18" />

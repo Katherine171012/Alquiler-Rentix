@@ -224,7 +224,7 @@ onMounted(loadUsuarios)
 
 <template>
   <section class="admin-page">
-    <AdminPageHeader title="Usuarios" description="Gestion de usuarios del sistema">
+    <AdminPageHeader title="Usuarios" description="Gestión de usuarios del sistema">
       <button type="button" class="admin-button" @click="activeModal = 'form'">
         <Plus :size="18" />
         <span>Nuevo Usuario</span>
@@ -236,7 +236,7 @@ onMounted(loadUsuarios)
 
     <div class="admin-card">
       <div class="admin-card__section">
-        <AdminSearchBar v-model="searchTerm" placeholder="Buscar usuario por username, correo o rol..." />
+        <AdminSearchBar v-model="searchTerm" placeholder="Buscar usuario por nombre de usuario, correo o rol..." />
       </div>
 
       <div class="admin-table-wrapper">
@@ -244,7 +244,7 @@ onMounted(loadUsuarios)
           <thead>
             <tr>
               <th>Usuario</th>
-              <th>Email</th>
+              <th>Correo</th>
               <th>Rol</th>
               <th>Registro</th>
               <th>Estado</th>
@@ -282,7 +282,7 @@ onMounted(loadUsuarios)
 
         <div v-if="isLoading" class="admin-card__section"><p class="admin-state-message">Cargando usuarios...</p></div>
         <div v-else-if="!filteredUsuarios.length" class="admin-card__section">
-          <AdminEmptyState title="No hay usuarios para mostrar" description="Crea usuarios nuevos y asignales su rol operativo." />
+          <AdminEmptyState title="No hay usuarios para mostrar" description="Crea usuarios nuevos y asígnales su rol operativo." />
         </div>
       </div>
     </div>
@@ -290,12 +290,12 @@ onMounted(loadUsuarios)
     <AdminModal v-if="activeModal === 'form'" :title="form.idUsuario ? 'Editar Usuario' : 'Nuevo Usuario'" @close="closeModal">
       <form class="admin-form" @submit.prevent="submitUsuario">
         <div class="admin-grid admin-grid--2">
-          <div class="admin-field"><label>Username *</label><input v-model="form.username" :disabled="Boolean(form.idUsuario)" required /></div>
+          <div class="admin-field"><label>Usuario *</label><input v-model="form.username" :disabled="Boolean(form.idUsuario)" required /></div>
           <div class="admin-field"><label>Correo *</label><input v-model="form.correo" type="email" required /></div>
         </div>
 
         <div v-if="!form.idUsuario" class="admin-field">
-          <label>Password *</label>
+          <label>Contraseña *</label>
           <input v-model="form.password" type="password" required />
         </div>
 
@@ -329,7 +329,7 @@ onMounted(loadUsuarios)
       <div class="admin-detail-grid">
         <article class="admin-detail-card">
           <dl>
-            <div><dt>Username</dt><dd>{{ selectedUsuario.username }}</dd></div>
+            <div><dt>Usuario</dt><dd>{{ selectedUsuario.username }}</dd></div>
             <div><dt>Correo</dt><dd>{{ selectedUsuario.correo }}</dd></div>
             <div><dt>Fecha de registro</dt><dd>{{ formatDate(selectedUsuario.fechaRegistroUtc) }}</dd></div>
           </dl>

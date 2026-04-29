@@ -13,7 +13,7 @@ const fechaInicio = ref('')
 const fechaFin = ref('')
 
 const titulo = computed(() => {
-  if (!vehiculo.value) return 'Detalle del vehiculo'
+  if (!vehiculo.value) return 'Detalle del vehículo'
   return `${vehiculo.value.nombreMarca} ${vehiculo.value.modeloVehiculo}`
 })
 
@@ -24,7 +24,7 @@ async function cargarDetalle() {
     const response = await obtenerVehiculo(route.params.id)
     vehiculo.value = response?.data ?? null
   } catch (err) {
-    error.value = err?.message ?? 'No se pudo cargar el detalle'
+    error.value = err?.message ?? 'No se pudo cargar el detalle del vehículo.'
   } finally {
     cargando.value = false
   }
@@ -40,14 +40,14 @@ onMounted(cargarDetalle)
         <p class="detalle__back">
           <RouterLink to="/vehiculos">
             <ArrowLeft :size="16" />
-            Volver al catalogo
+            Volver al catálogo
           </RouterLink>
         </p>
       </div>
     </div>
 
     <div class="detalle__inner">
-      <p v-if="cargando" class="feedback">Cargando vehiculo...</p>
+      <p v-if="cargando" class="feedback">Cargando vehículo...</p>
       <p v-else-if="error" class="feedback feedback--error">{{ error }}</p>
 
       <template v-else-if="vehiculo">
@@ -55,7 +55,7 @@ onMounted(cargarDetalle)
           <img :src="construirUrlImagenVehiculo(vehiculo.imagenVehiculo)" :alt="titulo" />
 
           <aside class="reserva-box">
-            <small class="reserva-box__label">Precio por dia</small>
+            <small class="reserva-box__label">Precio por día</small>
             <h3>${{ vehiculo.precioBaseDia }}</h3>
             <span>+ impuestos y cargos</span>
 
@@ -73,7 +73,7 @@ onMounted(cargarDetalle)
             >
               Reservar ahora
             </RouterLink>
-            <small class="reserva-box__note">Cancelacion gratis hasta 24 horas antes</small>
+            <small class="reserva-box__note">Cancelación gratuita hasta 24 horas antes</small>
           </aside>
         </article>
 
@@ -88,7 +88,7 @@ onMounted(cargarDetalle)
           </div>
 
           <p class="detalle__description">
-            Vehiculo comodo y eficiente, ideal para viajes de negocios, ciudad o escapadas de fin de semana.
+            Vehículo cómodo y eficiente, ideal para viajes de negocios, recorridos en Quito o escapadas de fin de semana.
           </p>
 
           <div class="meta-grid">
@@ -116,7 +116,7 @@ onMounted(cargarDetalle)
             <div>
               <CalendarDays :size="18" />
               <div>
-                <strong>Anio</strong>
+                <strong>Año</strong>
                 <span>{{ vehiculo.añoFabricacion }}</span>
               </div>
             </div>
@@ -124,7 +124,7 @@ onMounted(cargarDetalle)
         </article>
 
         <article class="incluye">
-          <h3>Caracteristicas incluidas</h3>
+          <h3>Características incluidas</h3>
           <ul>
             <li>Aire acondicionado</li>
             <li>Sistema de audio premium</li>

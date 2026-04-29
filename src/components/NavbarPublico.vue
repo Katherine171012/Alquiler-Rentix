@@ -17,12 +17,12 @@ const accountRoute = computed(() => '/mi-cuenta/perfil')
     <div class="navbar__inner">
       <RouterLink to="/" class="brand">
         <span class="brand__logo"><CarFront :size="12" /></span>
-        RentixAutos
+        Rentix Autos
       </RouterLink>
       <nav class="nav-links">
         <RouterLink to="/" :class="{ active: isHome }">Inicio</RouterLink>
         <RouterLink to="/vehiculos" :class="{ active: route.path.startsWith('/vehiculos') }">
-          Vehiculos
+          Vehículos
         </RouterLink>
       </nav>
       <div class="actions">
@@ -37,7 +37,7 @@ const accountRoute = computed(() => '/mi-cuenta/perfil')
           </RouterLink>
         </template>
         <template v-else>
-          <RouterLink to="/login" class="ghost">Iniciar sesion</RouterLink>
+          <RouterLink to="/login" class="ghost">Iniciar sesión</RouterLink>
           <RouterLink to="/registro" class="solid">Registrarse</RouterLink>
         </template>
       </div>

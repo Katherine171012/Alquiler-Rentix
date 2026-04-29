@@ -27,19 +27,19 @@ const authStore = useAuthStore()
 const isSidebarOpen = ref(false)
 
 const baseItems = [
-  { label: 'Dashboard', to: '/panel', icon: Gauge },
+  { label: 'Resumen', to: '/panel', icon: Gauge },
   { label: 'Reservas', to: '/panel/reservas', icon: CalendarDays },
   { label: 'Clientes', to: '/panel/clientes', icon: Users },
-  { label: 'Vehiculos', to: '/panel/vehiculos', icon: CarFront },
+  { label: 'Vehículos', to: '/panel/vehiculos', icon: CarFront },
   { label: 'Facturas', to: '/panel/facturas', icon: ReceiptText },
   { label: 'Conductores', to: '/panel/conductores', icon: CircleUserRound },
   { label: 'Extras', to: '/panel/extras', icon: Boxes },
 ]
 
 const adminOnlyItems = [
-  { label: 'Configuracion', to: '/panel/configuracion', icon: Settings },
+  { label: 'Configuración', to: '/panel/configuracion', icon: Settings },
   { label: 'Usuarios', to: '/panel/usuarios', icon: UserRoundCog },
-  { label: 'Auditoria', to: '/panel/auditoria', icon: ShieldCheck },
+  { label: 'Auditoría', to: '/panel/auditoria', icon: ShieldCheck },
 ]
 
 const menuItems = computed(() => {
@@ -73,14 +73,14 @@ function logout() {
   <div class="panel-layout">
     <button type="button" class="panel-layout__menu-toggle" @click="toggleSidebar">
       <Menu :size="18" />
-      <span>Menu</span>
+      <span>Menú</span>
     </button>
 
     <button
       v-if="isSidebarOpen"
       type="button"
       class="panel-layout__backdrop"
-      aria-label="Cerrar menu"
+      aria-label="Cerrar menú"
       @click="toggleSidebar"
     />
 
@@ -90,8 +90,8 @@ function logout() {
           <CarFront :size="18" />
         </div>
         <div>
-          <h2>RentixAutos</h2>
-          <p>Sistema de Gestion</p>
+          <h2>Rentix Autos</h2>
+          <p>Sistema de gestión</p>
         </div>
       </div>
 
@@ -128,7 +128,7 @@ function logout() {
 
         <button type="button" class="panel-layout__logout" @click="logout">
           <LogOut :size="18" />
-          <span>Cerrar Sesion</span>
+          <span>Cerrar sesión</span>
         </button>
       </div>
     </aside>

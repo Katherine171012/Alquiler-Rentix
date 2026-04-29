@@ -278,11 +278,11 @@ onMounted(cargarLocalizacionesSeleccionadas)
     <div class="checkout-view__inner">
       <template v-if="!esExito">
         <nav class="checkout-breadcrumb">
-          <RouterLink to="/vehiculos">Vehiculos</RouterLink>
+          <RouterLink to="/vehiculos">Vehículos</RouterLink>
           <span>/</span>
           <span>{{ reservaStore.vehiculo?.nombreMarca }} {{ reservaStore.vehiculo?.modeloVehiculo }}</span>
           <span>/</span>
-          <span>Confirmacion</span>
+          <span>Confirmación</span>
         </nav>
 
         <header class="checkout-header">
@@ -303,7 +303,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
             <article class="checkout-card">
               <h2>
                 <Check :size="22" />
-                Vehiculo Seleccionado
+                Vehículo seleccionado
               </h2>
               <div class="vehicle-card">
                 <img
@@ -325,7 +325,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
             <article class="checkout-card">
               <h2>
                 <CalendarDays :size="22" />
-                Fechas y Ubicacion
+                Fechas y ubicación
               </h2>
               <div class="detail-grid">
                 <div>
@@ -392,7 +392,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
               Resumen de Pago
             </h2>
             <div class="summary-row">
-              <span>Vehiculo ({{ diasReserva }} dias)</span>
+              <span>Vehículo ({{ diasReserva }} días)</span>
               <strong>${{ subtotalVehiculo.toFixed(2) }}</strong>
             </div>
             <div class="summary-row" v-if="subtotalExtras > 0">
@@ -415,9 +415,9 @@ onMounted(cargarLocalizacionesSeleccionadas)
             <div class="payment-method">
               <h3>
                 <FileText :size="20" />
-                Metodo de Pago
+                Método de pago
               </h3>
-              <div>Tarjeta de Credito/Debito</div>
+              <div>Tarjeta de crédito o débito</div>
               <p>Pago seguro procesado al confirmar.</p>
             </div>
           </aside>
@@ -427,7 +427,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
       <template v-else>
         <div class="success-hero">
           <span class="success-hero__icon"><Check :size="48" /></span>
-          <h1>Reserva Confirmada!</h1>
+          <h1>¡Reserva confirmada!</h1>
           <p>Tu reserva ha sido procesada exitosamente</p>
         </div>
 
@@ -436,7 +436,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
         <article class="success-card">
           <header class="success-card__head">
             <div>
-              <small>Numero de Reserva</small>
+              <small>Número de reserva</small>
               <strong>{{ reservaStore.reservaConfirmada?.resNumeroPublico || `#${reservaStore.reservaConfirmada?.idReserva || route.query.idReserva}` }}</strong>
             </div>
             <div class="success-card__invoice">
@@ -446,7 +446,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
           </header>
 
           <section class="success-section">
-            <h2>Vehiculo Reservado</h2>
+            <h2>Vehículo reservado</h2>
             <div class="vehicle-card">
               <img
                 v-if="reservaStore.vehiculo"
@@ -462,14 +462,14 @@ onMounted(cargarLocalizacionesSeleccionadas)
           </section>
 
           <section class="success-section">
-            <h2>Fechas y Ubicacion</h2>
+            <h2>Fechas y ubicación</h2>
             <div class="detail-grid">
               <div>
                 <small>Fecha de Recogida</small>
                 <strong>{{ formatearFecha(reservaStore.fechaInicio) }}</strong>
               </div>
               <div>
-                <small>Fecha de Devolucion</small>
+                <small>Fecha de devolución</small>
                 <strong>{{ formatearFecha(reservaStore.fechaFin) }}</strong>
               </div>
               <div>
@@ -484,7 +484,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
           </section>
 
           <section class="success-section" v-if="reservaStore.conductores.length">
-            <h2>Conductor Principal</h2>
+            <h2>Conductor principal</h2>
             <article class="driver-card">
               <div>
                 <strong>{{ reservaStore.conductores[0]?.nombreCompleto }}</strong>
@@ -512,27 +512,27 @@ onMounted(cargarLocalizacionesSeleccionadas)
         </article>
 
         <article class="next-steps">
-          <h2>Que sigue?</h2>
+          <h2>¿Qué sigue?</h2>
           <div class="next-steps__list">
             <div class="step-card step-card--blue">
               <b>1</b>
               <div>
-                <strong>Confirmacion por Email</strong>
-                <span>Recibiras un correo con todos los detalles de tu reserva y factura.</span>
+                <strong>Confirmación por correo</strong>
+                <span>Recibirás un correo con todos los detalles de tu reserva y factura.</span>
               </div>
             </div>
             <div class="step-card step-card--green">
               <b>2</b>
               <div>
-                <strong>Recoge tu Vehiculo</strong>
+                <strong>Recoge tu vehículo</strong>
                 <span>Presenta tu confirmacion y documentos en la localizacion elegida.</span>
               </div>
             </div>
             <div class="step-card step-card--violet">
               <b>3</b>
               <div>
-                <strong>Disfruta tu Viaje</strong>
-                <span>Conduce con seguridad y devuelve el vehiculo en la fecha acordada.</span>
+                <strong>Disfruta tu viaje</strong>
+                <span>Conduce con seguridad y devuelve el vehículo en la fecha acordada.</span>
               </div>
             </div>
           </div>

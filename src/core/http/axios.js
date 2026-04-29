@@ -22,7 +22,10 @@ function normalizeApiError(error) {
 
   return {
     success: false,
-    message: responsePayload?.message ?? error?.message ?? 'Error de red o servidor',
+    message:
+      responsePayload?.message ??
+      error?.message ??
+      'No se pudo conectar con el servidor. Intenta nuevamente.',
     data: responsePayload?.data ?? null,
     errors: Array.isArray(responsePayload?.errors) ? responsePayload.errors : [],
     status: error?.response?.status ?? 0,
@@ -53,7 +56,7 @@ api.interceptors.response.use(
 
     return {
       success: true,
-      message: 'Operacion exitosa',
+      message: 'Operación exitosa',
       data: response.data,
       errors: [],
     }
