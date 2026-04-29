@@ -15,7 +15,6 @@ import { crearConductor } from '../../../api/conductores.api'
 import { obtenerLocalizacion } from '../../../api/localizaciones.api'
 import { asignarConductorReserva } from '../../../api/reservasConductor.api'
 import { agregarExtraReserva } from '../../../api/reservasExtra.api'
-import { ROLES } from '../../../core/constants/roles'
 import { useAuthStore } from '../../../stores/auth.store'
 import { useReservaStore } from '../../../stores/reserva.store'
 import { construirUrlImagenVehiculo } from '../../../utils/imagenesVehiculo'
@@ -92,12 +91,23 @@ function nombreLocalizacion(item, fallbackId) {
   )
 }
 
-async function persistirConductoresYExtras(idReserva) {
-  if (!authStore.hasAnyRole([ROLES.ADMIN, ROLES.VENDEDOR])) {
-    return
+function obtenerConductoresNormalizados() {
+  if (!Array.isArray(reservaStore.conductores) || !reservaStore.conductores.length) {
+    return []
   }
 
-  for (const conductor of reservaStore.conductores) {
+  const tienePrincipal = reservaStore.conductores.some((conductor) => conductor?.principal)
+
+  return reservaStore.conductores.map((conductor, index) => ({
+    ...conductor,
+    principal: tienePrincipal ? Boolean(conductor?.principal) : index === 0,
+  }))
+}
+
+async function persistirConductoresYExtras(idReserva) {
+  const conductores = obtenerConductoresNormalizados()
+
+  for (const conductor of conductores) {
     const conductorCreado = await crearConductor({
       tipoIdentificacion: conductor.tipoIdentificacion,
       numeroIdentificacion: conductor.numeroIdentificacion,
@@ -139,6 +149,14 @@ async function confirmarYCrearReserva() {
   try {
     cargando.value = true
     error.value = ''
+
+    const conductores = obtenerConductoresNormalizados()
+    const conductorPrincipal = conductores.find((conductor) => conductor.principal)
+
+    if (!conductores.length || !conductorPrincipal) {
+      error.value = 'Debe asignarse un conductor principal antes de confirmar.'
+      return
+    }
 
     if (estaRetomandoPendiente.value) {
       const reservaId = reservaPendienteId.value

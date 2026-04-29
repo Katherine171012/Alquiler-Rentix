@@ -271,6 +271,12 @@ function continuar() {
     return
   }
 
+  const conductorPrincipal = reservaStore.conductores.find((conductor) => conductor?.principal)
+  if (!reservaStore.conductores.length || !conductorPrincipal) {
+    error.value = 'Debe asignarse un conductor principal antes de confirmar.'
+    return
+  }
+
   reservaStore.setPasoActual(4)
   router.push('/reserva/pago')
 }
