@@ -14,7 +14,8 @@ import {
 import { crearConductor } from '../../../api/conductores.api'
 import { obtenerLocalizacion } from '../../../api/localizaciones.api'
 import { asignarConductorReserva } from '../../../api/reservasConductor.api'
-import { agregarExtraReserva } from '../../../api/reservasExtra.api'
+import { listarConductoresReserva } from '../../../api/reservasConductor.api'
+import { agregarExtraReserva, listarExtrasReserva } from '../../../api/reservasExtra.api'
 import { useAuthStore } from '../../../stores/auth.store'
 import { useReservaStore } from '../../../stores/reserva.store'
 import { construirUrlImagenVehiculo } from '../../../utils/imagenesVehiculo'
@@ -102,6 +103,32 @@ function obtenerConductoresNormalizados() {
     ...conductor,
     principal: tienePrincipal ? Boolean(conductor?.principal) : index === 0,
   }))
+}
+
+function asItems(payload) {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.items)) return payload.items
+  return []
+}
+
+async function cargarAsignacionesReserva(idReserva) {
+  const [conductoresResponse, extrasResponse] = await Promise.all([
+    listarConductoresReserva(idReserva),
+    listarExtrasReserva(idReserva),
+  ])
+
+  return {
+    conductores: asItems(conductoresResponse?.data).map((conductor) => ({
+      id: conductor.idReservaXConductor ?? conductor.rxcIdConductor,
+      idConductor: conductor.rxcIdConductor,
+      nombreCompleto: conductor.nombreConductor,
+      numeroLicencia: conductor.numeroLicencia ?? '',
+      telefono: conductor.telefono ?? conductor.conTelefono ?? '',
+      principal: Boolean(conductor.rxcEsPrincipal),
+      persistido: true,
+    })),
+    extras: asItems(extrasResponse?.data),
+  }
 }
 
 async function persistirConductoresYExtras(idReserva) {
@@ -241,6 +268,7 @@ async function cargarReservaPendienteSiHaceFalta() {
     cargando.value = true
     error.value = ''
     const detalle = await getReservationDetail(reservaPendienteId.value)
+    const asignaciones = await cargarAsignacionesReserva(reservaPendienteId.value)
     reservaPendiente.value = detalle ?? null
     if (!detalle) {
       error.value = 'No se pudo cargar la reserva pendiente.'
@@ -248,8 +276,8 @@ async function cargarReservaPendienteSiHaceFalta() {
     }
 
     reservaStore.hydrateFromReservation(detalle)
-    reservaStore.setConductores([])
-    reservaStore.setExtras([])
+    reservaStore.setConductores(asignaciones.conductores)
+    reservaStore.setExtras(asignaciones.extras)
     await cargarLocalizacionesSeleccionadas()
   } catch (err) {
     error.value = err?.message ?? 'No se pudo cargar la reserva pendiente.'
