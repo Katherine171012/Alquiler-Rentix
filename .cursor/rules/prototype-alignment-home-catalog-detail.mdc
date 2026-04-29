@@ -1,0 +1,26 @@
+---
+description: Keep Home, Catalog, Detail aligned to prototype with explicit exceptions
+alwaysApply: true
+---
+
+# Prototype Alignment Rule (Current Block)
+
+When working on the current block screens (`Inicio`, `Catalogo`, `Detalle`), match the prototype layout and spacing as closely as possible.
+
+## Required
+
+- Prioritize prototype visual parity for:
+  - section heights and spacing
+  - typography scale and hierarchy
+  - card, filter, and hero proportions
+  - desktop first, then responsive adaptation
+
+## Explicit Exceptions
+
+- Do NOT copy the prototype footer blindly; keep project footer decisions from current chat.
+- Do NOT add or keep a navbar `Buscar Vehiculo` button unless the user explicitly asks for it in that step.
+
+## Implementation Preference
+
+- Reuse existing project components and API flows.
+- Avoid introducing style drift between `Inicio`, `Catalogo`, and `Detalle`.
