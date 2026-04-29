@@ -105,6 +105,20 @@ function obtenerConductoresNormalizados() {
   }))
 }
 
+function obtenerExtrasNormalizados() {
+  if (!Array.isArray(reservaStore.extras)) {
+    return []
+  }
+
+  return reservaStore.extras.map((extra) => ({
+    ...extra,
+    idExtra: extra.idExtra ?? extra.rxeIdExtra,
+    nombre: extra.nombre ?? extra.nombreExtra,
+    valor: Number(extra.valor ?? extra.rxePrecioPorDia ?? 0),
+    cantidad: Number(extra.cantidad ?? extra.rxeCantidad ?? 1),
+  }))
+}
+
 function asItems(payload) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.items)) return payload.items
@@ -127,47 +141,93 @@ async function cargarAsignacionesReserva(idReserva) {
       principal: Boolean(conductor.rxcEsPrincipal),
       persistido: true,
     })),
-    extras: asItems(extrasResponse?.data),
+    extras: asItems(extrasResponse?.data).map((extra) => ({
+      id: extra.idReservaXExtra ?? extra.rxeIdExtra,
+      idExtra: extra.rxeIdExtra,
+      nombre: extra.nombreExtra,
+      valor: Number(extra.rxePrecioPorDia ?? 0),
+      cantidad: Number(extra.rxeCantidad ?? 1),
+      persistido: true,
+    })),
   }
 }
 
-async function persistirConductoresYExtras(idReserva) {
+async function crearConductorYObtenerId(conductor) {
+  if (conductor?.idConductor) {
+    return Number(conductor.idConductor)
+  }
+
+  const conductorCreado = await crearConductor({
+    tipoIdentificacion: conductor.tipoIdentificacion,
+    numeroIdentificacion: conductor.numeroIdentificacion,
+    conNombre1: conductor.conNombre1,
+    conNombre2: conductor.conNombre2 || null,
+    conApellido1: conductor.conApellido1,
+    conApellido2: conductor.conApellido2 || null,
+    numeroLicencia: conductor.numeroLicencia,
+    fechaVencimientoLicencia: conductor.fechaVencimientoLicencia,
+    edadConductor: Number(conductor.edadConductor || 18),
+    conTelefono: conductor.telefono || null,
+    conCorreo: conductor.correo || null,
+    creadoPorUsuario: authStore.user?.username ?? authStore.user?.correo ?? 'cliente-web',
+    origenRegistro: 'ECOMMERCE',
+  })
+
+  return Number(conductorCreado?.data?.idConductor ?? conductorCreado?.idConductor ?? 0) || null
+}
+
+async function persistirConductoresYExtras(idReserva, existingReservation = null) {
   const conductores = obtenerConductoresNormalizados()
+  const extras = obtenerExtrasNormalizados()
+  const existingPrincipal = existingReservation?.conductores?.find((item) => item.rxcEsPrincipal || item.principal)
+  const existingSecondaryIds = new Set(
+    (existingReservation?.conductores ?? [])
+      .filter((item) => !(item.rxcEsPrincipal || item.principal))
+      .map((item) => Number(item.rxcIdConductor ?? item.idConductor)),
+  )
+  const existingExtraIds = new Set(
+    (existingReservation?.extras ?? []).map((item) => Number(item.rxeIdExtra ?? item.idExtra)),
+  )
 
-  for (const conductor of conductores) {
-    const conductorCreado = await crearConductor({
-      tipoIdentificacion: conductor.tipoIdentificacion,
-      numeroIdentificacion: conductor.numeroIdentificacion,
-      conNombre1: conductor.conNombre1,
-      conNombre2: conductor.conNombre2 || null,
-      conApellido1: conductor.conApellido1,
-      conApellido2: conductor.conApellido2 || null,
-      numeroLicencia: conductor.numeroLicencia,
-      fechaVencimientoLicencia: conductor.fechaVencimientoLicencia,
-      edadConductor: Number(conductor.edadConductor || 18),
-      conTelefono: conductor.telefono || null,
-      conCorreo: conductor.correo || null,
-      creadoPorUsuario: authStore.user?.username ?? authStore.user?.correo ?? 'cliente-web',
-      origenRegistro: 'ECOMMERCE',
-    })
+  const conductorPrincipal = conductores.find((conductor) => conductor.principal)
+  let principalId = null
 
-    const idConductor = conductorCreado?.data?.idConductor ?? conductorCreado?.idConductor
+  if (conductorPrincipal) {
+    principalId = await crearConductorYObtenerId(conductorPrincipal)
 
-    if (idConductor) {
+    if (principalId && Number(principalId) !== Number(existingPrincipal?.rxcIdConductor ?? existingPrincipal?.idConductor)) {
       await asignarConductorReserva({
         rxcIdReserva: Number(idReserva),
-        rxcIdConductor: Number(idConductor),
-        rxcEsPrincipal: Boolean(conductor.principal),
+        rxcIdConductor: Number(principalId),
+        rxcEsPrincipal: true,
       })
     }
   }
 
-  for (const extra of reservaStore.extras) {
+  for (const conductor of conductores) {
+    if (conductor.principal) continue
+
+    const idConductor = await crearConductorYObtenerId(conductor)
+    if (!idConductor) continue
+    if (Number(idConductor) === Number(principalId)) continue
+    if (existingSecondaryIds.has(Number(idConductor))) continue
+
+    await asignarConductorReserva({
+      rxcIdReserva: Number(idReserva),
+      rxcIdConductor: Number(idConductor),
+      rxcEsPrincipal: false,
+    })
+  }
+
+  for (const extra of extras) {
+    if (!extra.idExtra) continue
+    if (existingExtraIds.has(Number(extra.idExtra))) continue
+
     await agregarExtraReserva({
       rxeIdReserva: Number(idReserva),
       rxeIdExtra: Number(extra.idExtra),
-      rxeCantidad: Number(extra.cantidad ?? 1),
-      rxePrecioPorDia: Number(extra.valor ?? 0),
+      rxeCantidad: Number(extra.cantidad),
+      rxePrecioPorDia: Number(extra.valor),
     })
   }
 }
@@ -187,6 +247,7 @@ async function confirmarYCrearReserva() {
 
     if (estaRetomandoPendiente.value) {
       const reservaId = reservaPendienteId.value
+      await persistirConductoresYExtras(reservaId, reservaPendiente.value)
       const confirmacion = await confirmClientReservation(reservaId)
       const reservaDetalle = (await getReservationDetail(reservaId)) ?? reservaPendiente.value
       const factura =
