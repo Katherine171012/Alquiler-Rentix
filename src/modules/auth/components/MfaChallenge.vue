@@ -26,14 +26,10 @@ watch(
   <div v-if="visible" class="mfa-challenge">
     <div class="mfa-challenge__header">
       <Smartphone :size="18" />
-      <strong>Autenticación multifactor (MFA)</strong>
+      <strong>Verificación MFA</strong>
     </div>
-    <p class="mfa-challenge__hint">
-      Ingresa el código de 6 dígitos de tu app autenticadora.
-      <span class="mfa-challenge__demo">Demo: usa cualquier código de 6 números.</span>
-    </p>
     <label class="mfa-challenge__field">
-      <span>Código MFA</span>
+      <span>Código de 6 dígitos</span>
       <input
         v-model="code"
         type="text"
@@ -44,9 +40,6 @@ watch(
         required
       />
     </label>
-    <p class="mfa-challenge__policy">
-      Política simulada: bloqueo 15 min tras 5 fallos · captcha desde el 3.er intento · logs en consola.
-    </p>
   </div>
 </template>
 
@@ -67,19 +60,6 @@ watch(
   color: #1d4ed8;
 }
 
-.mfa-challenge__hint {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--color-text-soft);
-}
-
-.mfa-challenge__demo {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.85rem;
-  color: #1d4ed8;
-}
-
 .mfa-challenge__field {
   display: grid;
   gap: 0.4rem;
@@ -92,11 +72,5 @@ watch(
   border-radius: 0.75rem;
   letter-spacing: 0.35em;
   font-size: 1.1rem;
-}
-
-.mfa-challenge__policy {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
 }
 </style>

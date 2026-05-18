@@ -111,21 +111,34 @@ export const useAuthStore = defineStore('auth', () => {
           ip: clientIp,
           message: 'Captcha incorrecto o expirado',
         })
+        const failState = recordFailedAttempt(username, clientIp)
         return {
           success: false,
-          message: 'Captcha incorrecto o expirado. Intenta de nuevo.',
+          message: failState.message || 'Captcha incorrecto o expirado. Intenta de nuevo.',
           errors: [],
-          security: { ...preCheck, requiresCaptcha: true },
+          security: { ...preCheck, ...failState, requiresCaptcha: true },
         }
       }
     }
 
-    const response = await loginRequest(credentials)
+    let response
+    try {
+      response = await loginRequest(credentials)
+    } catch (error) {
+      const failState = recordFailedAttempt(username, clientIp)
+      return {
+        success: false,
+        message: failState.message || error?.message || 'No se pudo iniciar sesión.',
+        errors: Array.isArray(error?.errors) ? error.errors : [],
+        security: failState,
+      }
+    }
 
     if (!response.success) {
       const failState = recordFailedAttempt(username, clientIp)
       return {
         ...response,
+        message: failState.message || response.message,
         security: failState,
       }
     }
@@ -186,6 +199,14 @@ export const useAuthStore = defineStore('auth', () => {
     return normalizedAllowedRoles.some((role) => roles.value.includes(role))
   }
 
+  function registerFailedLoginAttempt(username) {
+    return recordFailedAttempt(username, getClientIp())
+  }
+
+  function resetLoginSecurity(username) {
+    recordSuccessfulLogin(username, getClientIp())
+  }
+
   return {
     token,
     user,
@@ -193,6 +214,8 @@ export const useAuthStore = defineStore('auth', () => {
     expirationUtc,
     isAuthenticated,
     login,
+    registerFailedLoginAttempt,
+    resetLoginSecurity,
     logout,
     ensureValidSession,
     setSession,

@@ -46,11 +46,8 @@ watch(
   <div v-if="required" class="login-captcha">
     <div class="login-captcha__header">
       <ShieldCheck :size="18" />
-      <strong>Verificación requerida</strong>
+      <strong>Captcha</strong>
     </div>
-    <p class="login-captcha__hint">
-      Tras varios intentos fallidos, confirma que no eres un robot.
-    </p>
     <label class="login-captcha__field">
       <span>¿Cuánto es {{ question }}?</span>
       <input
@@ -63,7 +60,7 @@ watch(
       />
     </label>
     <button type="button" class="login-captcha__refresh" @click="refreshChallenge">
-      Generar otro captcha
+      Cambiar captcha
     </button>
   </div>
 </template>
@@ -83,12 +80,6 @@ watch(
   align-items: center;
   gap: 0.5rem;
   color: #7b173b;
-}
-
-.login-captcha__hint {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--color-text-soft);
 }
 
 .login-captcha__field {

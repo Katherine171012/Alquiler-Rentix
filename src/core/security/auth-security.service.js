@@ -213,7 +213,7 @@ export function recordFailedAttempt(username, ip = getClientIp()) {
   if (user.failedAttempts >= policy.maxFailedAttempts) {
     user.lockedUntil = ts + policy.lockoutMinutes * 60_000
     locked = true
-    message = `Cuenta bloqueada ${policy.lockoutMinutes} minutos por exceder ${policy.maxFailedAttempts} intentos fallidos.`
+    message = `Intento ${user.failedAttempts} de ${policy.maxFailedAttempts}. Cuenta bloqueada ${policy.lockoutMinutes} minutos.`
   } else if (requiresCaptchaNow) {
     message += ' Debes completar el captcha para continuar.'
   }
@@ -262,17 +262,55 @@ export function recordSuccessfulLogin(username, ip = getClientIp()) {
   })
 }
 
+export function getAttemptDisplay(failedAttempts = 0) {
+  const policy = AUTH_SECURITY_POLICY
+  const current = Math.min(failedAttempts, policy.maxFailedAttempts)
+  const remaining = Math.max(0, policy.maxFailedAttempts - current)
+  const captchaIn = Math.max(0, policy.captchaAfterAttempts - current)
+
+  return {
+    failedAttempts: current,
+    maxFailedAttempts: policy.maxFailedAttempts,
+    label: current > 0 ? `Intento ${current} de ${policy.maxFailedAttempts}` : `Sin intentos fallidos (máx. ${policy.maxFailedAttempts})`,
+    remainingLabel:
+      remaining > 0
+        ? `Quedan ${remaining} intento${remaining === 1 ? '' : 's'} antes del bloqueo`
+        : 'Sin intentos restantes',
+    captchaHint:
+      current >= policy.captchaAfterAttempts
+        ? 'Captcha obligatorio'
+        : captchaIn > 0
+          ? `Captcha en el intento ${policy.captchaAfterAttempts}`
+          : '',
+    progressPercent: Math.round((current / policy.maxFailedAttempts) * 100),
+    steps: Array.from({ length: policy.maxFailedAttempts }, (_, index) => {
+      const step = index + 1
+      return {
+        step,
+        failed: step <= current,
+        captcha: step === policy.captchaAfterAttempts,
+        lock: step === policy.maxFailedAttempts,
+      }
+    }),
+  }
+}
+
 export function getSecurityStatus(username) {
   const state = readState()
   const user = getUserState(state, username)
   const policy = AUTH_SECURITY_POLICY
 
+  const locked = user.lockedUntil > now()
+
   return {
     failedAttempts: user.failedAttempts,
     maxFailedAttempts: policy.maxFailedAttempts,
     requiresCaptcha: user.failedAttempts >= policy.captchaAfterAttempts,
-    locked: user.lockedUntil > now(),
+    locked,
     lockoutRemainingMs: Math.max(0, user.lockedUntil - now()),
     suspicious: user.failedAttempts >= 2,
+    message: locked
+      ? `Cuenta bloqueada temporalmente. Intenta en ${formatLockoutRemaining(user.lockedUntil)}.`
+      : '',
   }
 }

@@ -1,21 +1,21 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AlertTriangle, CarFront, LockKeyhole, Mail, Shield } from 'lucide-vue-next'
+import { AlertTriangle, CarFront, LockKeyhole, Mail } from 'lucide-vue-next'
 import { ROLES } from '../../../core/constants/roles'
-import { AUTH_SECURITY_POLICY } from '../../../core/security/auth-security.config.js'
 import {
+  delay,
   getProgressiveDelayMs,
   getSecurityStatus,
 } from '../../../core/security/auth-security.service.js'
 import { useAuthStore } from '../../../stores/auth.store'
+import LoginAttemptTracker from '../components/LoginAttemptTracker.vue'
 import LoginCaptcha from '../components/LoginCaptcha.vue'
 import MfaChallenge from '../components/MfaChallenge.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
-const policy = AUTH_SECURITY_POLICY
 
 const form = reactive({
   username: '',
@@ -30,12 +30,10 @@ const showMfa = ref(false)
 const captchaToken = ref('')
 const captchaAnswer = ref('')
 const mfaCode = ref('')
-const delayHint = ref('')
 
 const requiresCaptcha = computed(() => {
   if (securityInfo.value?.requiresCaptcha) return true
-  const status = getSecurityStatus(form.username)
-  return status.requiresCaptcha
+  return getSecurityStatus(form.username).requiresCaptcha
 })
 
 const suspiciousAlert = computed(() => {
@@ -43,11 +41,15 @@ const suspiciousAlert = computed(() => {
   return securityInfo.value?.suspicious || status.suspicious
 })
 
-const attemptLabel = computed(() => {
-  const attempts = securityInfo.value?.failedAttempts ?? getSecurityStatus(form.username).failedAttempts
-  if (!attempts) return ''
-  return `Intentos fallidos: ${attempts} / ${policy.maxFailedAttempts}`
+const failedAttempts = computed(() => {
+  return securityInfo.value?.failedAttempts ?? getSecurityStatus(form.username).failedAttempts ?? 0
 })
+
+const isLocked = computed(() => {
+  return securityInfo.value?.locked ?? getSecurityStatus(form.username).locked ?? false
+})
+
+const showAttemptTracker = computed(() => failedAttempts.value > 0)
 
 watch(
   () => form.username,
@@ -64,10 +66,14 @@ function resolveRedirectByRole() {
   return '/mi-cuenta/perfil'
 }
 
+function normalizeUsername(value) {
+  const raw = value.trim()
+  return raw.includes('@') ? raw.split('@')[0] : raw
+}
+
 async function onSubmit() {
   message.value = ''
   errors.value = []
-  delayHint.value = ''
 
   if (!form.username.trim()) {
     message.value = 'Ingresa tu usuario o correo electrónico.'
@@ -76,6 +82,11 @@ async function onSubmit() {
 
   if (!form.password) {
     message.value = 'Ingresa tu contraseña.'
+    return
+  }
+
+  if (isLocked.value) {
+    message.value = securityInfo.value?.message ?? getSecurityStatus(form.username).message
     return
   }
 
@@ -92,13 +103,11 @@ async function onSubmit() {
   isLoading.value = true
 
   try {
-    const rawUsername = form.username.trim()
-    const normalizedUsername = rawUsername.includes('@') ? rawUsername.split('@')[0] : rawUsername
+    const normalizedUsername = normalizeUsername(form.username)
+    const progressiveMs = getProgressiveDelayMs(getSecurityStatus(normalizedUsername).failedAttempts)
 
-    const failedAttempts = getSecurityStatus(normalizedUsername).failedAttempts
-    const progressiveMs = getProgressiveDelayMs(failedAttempts)
     if (progressiveMs > 0) {
-      delayHint.value = `Aplicando retardo progresivo (${Math.round(progressiveMs / 1000)}s)…`
+      await delay(progressiveMs)
     }
 
     const response = await authStore.login(
@@ -123,7 +132,8 @@ async function onSubmit() {
     }
 
     if (!response?.success) {
-      message.value = response?.message ?? securityInfo.value?.message ?? 'No se pudo iniciar sesión.'
+      message.value =
+        response?.security?.message ?? response?.message ?? securityInfo.value?.message ?? 'No se pudo iniciar sesión.'
       errors.value = Array.isArray(response?.errors) ? response.errors : []
       return
     }
@@ -135,11 +145,13 @@ async function onSubmit() {
 
     await router.push(redirectTarget)
   } catch (error) {
-    message.value = error?.message ?? 'No se pudo iniciar sesión.'
+    const normalizedUsername = normalizeUsername(form.username)
+    const failState = authStore.registerFailedLoginAttempt(normalizedUsername)
+    securityInfo.value = failState
+    message.value = failState.message ?? error?.message ?? 'No se pudo iniciar sesión.'
     errors.value = Array.isArray(error?.errors) ? error.errors : []
   } finally {
     isLoading.value = false
-    delayHint.value = ''
   }
 }
 </script>
@@ -156,21 +168,18 @@ async function onSubmit() {
     </div>
 
     <article class="auth-card">
-      <div class="auth-policy">
-        <Shield :size="16" />
-        <span>
-          Política activa: {{ policy.maxFailedAttempts }} intentos · bloqueo {{ policy.lockoutMinutes }} min ·
-          captcha desde el {{ policy.captchaAfterAttempts }}.º intento
-        </span>
-      </div>
+      <LoginAttemptTracker
+        v-if="showAttemptTracker"
+        :failed-attempts="failedAttempts"
+        :locked="isLocked"
+      />
 
       <form class="auth-form" @submit.prevent="onSubmit">
         <div v-if="suspiciousAlert" class="auth-alert">
           <AlertTriangle :size="18" />
           <div>
             <strong>Actividad sospechosa detectada</strong>
-            <p>Se registraron intentos fallidos en esta cuenta. Revisa tu correo o contacta soporte.</p>
-            <p v-if="attemptLabel" class="auth-alert__meta">{{ attemptLabel }}</p>
+            <p>Detectamos varios intentos fallidos en esta cuenta.</p>
           </div>
         </div>
 
@@ -185,7 +194,7 @@ async function onSubmit() {
               placeholder="Ingresa tu usuario o correo"
               autocomplete="username"
               required
-              :disabled="isLoading"
+              :disabled="isLoading || isLocked"
             />
           </div>
         </label>
@@ -201,7 +210,7 @@ async function onSubmit() {
               placeholder="Ingresa tu contraseña"
               autocomplete="current-password"
               required
-              :disabled="isLoading"
+              :disabled="isLoading || isLocked"
             />
           </div>
         </label>
@@ -214,14 +223,13 @@ async function onSubmit() {
 
         <MfaChallenge :visible="showMfa" @update:code="mfaCode = $event" />
 
-        <p v-if="delayHint" class="auth-delay">{{ delayHint }}</p>
         <p v-if="message" class="auth-message">{{ message }}</p>
 
         <ul v-if="errors.length" class="auth-errors">
           <li v-for="(error, index) in errors" :key="`${error}-${index}`">{{ error }}</li>
         </ul>
 
-        <button class="auth-submit" type="submit" :disabled="isLoading">
+        <button class="auth-submit" type="submit" :disabled="isLoading || isLocked">
           {{
             isLoading
               ? 'Validando…'
@@ -295,18 +303,6 @@ async function onSubmit() {
   box-shadow: var(--shadow-lg);
 }
 
-.auth-policy {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
-  padding: 0.75rem 0.9rem;
-  border-radius: 0.85rem;
-  background: #f8f4f6;
-  font-size: 0.82rem;
-  color: var(--color-text-soft);
-}
-
 .auth-alert {
   display: flex;
   gap: 0.65rem;
@@ -325,11 +321,6 @@ async function onSubmit() {
 .auth-alert p {
   margin: 0;
   font-size: 0.9rem;
-}
-
-.auth-alert__meta {
-  margin-top: 0.35rem !important;
-  font-weight: 700;
 }
 
 .auth-form {
@@ -369,12 +360,6 @@ async function onSubmit() {
   outline: none;
   font-size: 1rem;
   background: transparent;
-}
-
-.auth-delay {
-  margin: 0;
-  color: #7b173b;
-  font-size: 0.9rem;
 }
 
 .auth-message,
