@@ -11,6 +11,8 @@ import {
   UserRound,
 } from 'lucide-vue-next'
 import { registerCliente } from '../../../api/auth.api'
+import { getPasswordRulesStatus, validatePassword } from '../../../core/security/password-policy.js'
+import { logSecurityEvent } from '../../../core/security/security-logger.js'
 import { useAuthStore } from '../../../stores/auth.store'
 
 const router = useRouter()
@@ -33,6 +35,7 @@ const form = reactive({
 const isLoading = ref(false)
 const message = ref('')
 const errors = ref([])
+const passwordRules = ref(getPasswordRulesStatus(''))
 
 async function onSubmit() {
   message.value = ''
@@ -40,6 +43,19 @@ async function onSubmit() {
 
   if (form.password !== form.confirmPassword) {
     message.value = 'Las contraseñas no coinciden.'
+    return
+  }
+
+  const passwordCheck = validatePassword(form.password)
+  if (!passwordCheck.valid) {
+    message.value = 'La contraseña no cumple la política de seguridad.'
+    errors.value = passwordCheck.errors
+    logSecurityEvent({
+      level: 'warn',
+      type: 'WEAK_PASSWORD_REJECTED',
+      username: form.username.trim(),
+      message: 'Registro rechazado por contraseña débil',
+    })
     return
   }
 
@@ -197,8 +213,23 @@ async function onSubmit() {
               <span>Contraseña *</span>
               <div class="register-input">
                 <LockKeyhole :size="20" />
-                <input v-model="form.password" type="password" placeholder="Crea una contraseña segura" required />
+                <input
+                  v-model="form.password"
+                  type="password"
+                  placeholder="Crea una contraseña segura"
+                  required
+                  @input="passwordRules = getPasswordRulesStatus(form.password)"
+                />
               </div>
+              <ul class="register-password-rules">
+                <li
+                  v-for="rule in passwordRules"
+                  :key="rule.id"
+                  :class="{ 'register-password-rules__ok': rule.met }"
+                >
+                  {{ rule.met ? '✓' : '○' }} {{ rule.label }}
+                </li>
+              </ul>
             </label>
 
             <label class="register-field">
@@ -388,6 +419,18 @@ async function onSubmit() {
 .register-links a {
   color: var(--color-primary);
   text-decoration: none;
+}
+
+.register-password-rules {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.register-password-rules__ok {
+  color: #067647;
+  font-weight: 600;
 }
 
 @media (max-width: 760px) {

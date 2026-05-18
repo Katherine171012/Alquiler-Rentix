@@ -2,6 +2,17 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { loginRequest } from '../modules/auth/services/auth.service'
 import { normalizeRole, normalizeRoles } from '../core/constants/roles'
+import {
+  delay,
+  evaluatePreLogin,
+  getClientIp,
+  recordFailedAttempt,
+  recordSuccessfulLogin,
+  requiresMfa,
+  validateCaptcha,
+  validateMfaCode,
+} from '../core/security/auth-security.service'
+import { logSecurityEvent } from '../core/security/security-logger'
 
 const AUTH_STORAGE_KEY = 'rentixautos.auth.session'
 
@@ -72,14 +83,68 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(AUTH_STORAGE_KEY)
   }
 
-  async function login(credentials) {
+  async function login(credentials, security = {}) {
+    const username = credentials?.username ?? ''
+    const clientIp = security.clientIp ?? getClientIp()
+
+    const preCheck = evaluatePreLogin(username, clientIp)
+    if (!preCheck.allowed) {
+      return {
+        success: false,
+        message: preCheck.message,
+        errors: [],
+        security: preCheck,
+      }
+    }
+
+    if (preCheck.progressiveDelayMs > 0) {
+      await delay(preCheck.progressiveDelayMs)
+    }
+
+    if (preCheck.requiresCaptcha) {
+      const captchaOk = validateCaptcha(security.captchaToken, security.captchaAnswer)
+      if (!captchaOk) {
+        logSecurityEvent({
+          level: 'warn',
+          type: 'CAPTCHA_FAILED',
+          username,
+          ip: clientIp,
+          message: 'Captcha incorrecto o expirado',
+        })
+        return {
+          success: false,
+          message: 'Captcha incorrecto o expirado. Intenta de nuevo.',
+          errors: [],
+          security: { ...preCheck, requiresCaptcha: true },
+        }
+      }
+    }
+
     const response = await loginRequest(credentials)
 
     if (!response.success) {
-      return response
+      const failState = recordFailedAttempt(username, clientIp)
+      return {
+        ...response,
+        security: failState,
+      }
+    }
+
+    if (requiresMfa() && !security.mfaVerified) {
+      if (!validateMfaCode(security.mfaCode)) {
+        return {
+          success: false,
+          message: security.mfaCode
+            ? 'Código MFA inválido. Debe tener 6 dígitos.'
+            : 'Completa la verificación MFA para continuar.',
+          errors: [],
+          security: { requiresMfa: true, ...preCheck },
+        }
+      }
     }
 
     const backendUser = response.data ?? {}
+    recordSuccessfulLogin(username, clientIp)
     setSession({
       token: backendUser.token,
       user: {
@@ -92,7 +157,7 @@ export const useAuthStore = defineStore('auth', () => {
       expirationUtc: backendUser.expirationUtc ?? null,
     })
 
-    return response
+    return { ...response, security: { cleared: true } }
   }
 
   function ensureValidSession() {

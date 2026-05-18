@@ -1,13 +1,21 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CarFront, LockKeyhole, Mail } from 'lucide-vue-next'
+import { AlertTriangle, CarFront, LockKeyhole, Mail, Shield } from 'lucide-vue-next'
 import { ROLES } from '../../../core/constants/roles'
+import { AUTH_SECURITY_POLICY } from '../../../core/security/auth-security.config.js'
+import {
+  getProgressiveDelayMs,
+  getSecurityStatus,
+} from '../../../core/security/auth-security.service.js'
 import { useAuthStore } from '../../../stores/auth.store'
+import LoginCaptcha from '../components/LoginCaptcha.vue'
+import MfaChallenge from '../components/MfaChallenge.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const policy = AUTH_SECURITY_POLICY
 
 const form = reactive({
   username: '',
@@ -17,6 +25,36 @@ const form = reactive({
 const isLoading = ref(false)
 const message = ref('')
 const errors = ref([])
+const securityInfo = ref(null)
+const showMfa = ref(false)
+const captchaToken = ref('')
+const captchaAnswer = ref('')
+const mfaCode = ref('')
+const delayHint = ref('')
+
+const requiresCaptcha = computed(() => {
+  if (securityInfo.value?.requiresCaptcha) return true
+  const status = getSecurityStatus(form.username)
+  return status.requiresCaptcha
+})
+
+const suspiciousAlert = computed(() => {
+  const status = getSecurityStatus(form.username)
+  return securityInfo.value?.suspicious || status.suspicious
+})
+
+const attemptLabel = computed(() => {
+  const attempts = securityInfo.value?.failedAttempts ?? getSecurityStatus(form.username).failedAttempts
+  if (!attempts) return ''
+  return `Intentos fallidos: ${attempts} / ${policy.maxFailedAttempts}`
+})
+
+watch(
+  () => form.username,
+  () => {
+    securityInfo.value = getSecurityStatus(form.username)
+  },
+)
 
 function resolveRedirectByRole() {
   if (authStore.hasAnyRole([ROLES.ADMIN, ROLES.VENDEDOR])) {
@@ -29,6 +67,7 @@ function resolveRedirectByRole() {
 async function onSubmit() {
   message.value = ''
   errors.value = []
+  delayHint.value = ''
 
   if (!form.username.trim()) {
     message.value = 'Ingresa tu usuario o correo electrónico.'
@@ -40,19 +79,51 @@ async function onSubmit() {
     return
   }
 
+  if (requiresCaptcha.value && !captchaAnswer.value.trim()) {
+    message.value = 'Completa el captcha de seguridad.'
+    return
+  }
+
+  if (showMfa.value && mfaCode.value.length !== 6) {
+    message.value = 'Ingresa el código MFA de 6 dígitos.'
+    return
+  }
+
   isLoading.value = true
 
   try {
     const rawUsername = form.username.trim()
     const normalizedUsername = rawUsername.includes('@') ? rawUsername.split('@')[0] : rawUsername
 
-    const response = await authStore.login({
-      username: normalizedUsername,
-      password: form.password,
-    })
+    const failedAttempts = getSecurityStatus(normalizedUsername).failedAttempts
+    const progressiveMs = getProgressiveDelayMs(failedAttempts)
+    if (progressiveMs > 0) {
+      delayHint.value = `Aplicando retardo progresivo (${Math.round(progressiveMs / 1000)}s)…`
+    }
+
+    const response = await authStore.login(
+      {
+        username: normalizedUsername,
+        password: form.password,
+      },
+      {
+        captchaToken: captchaToken.value,
+        captchaAnswer: captchaAnswer.value,
+        mfaCode: mfaCode.value,
+        mfaVerified: showMfa.value && mfaCode.value.length === 6,
+      },
+    )
+
+    securityInfo.value = response?.security ?? getSecurityStatus(normalizedUsername)
+
+    if (response?.security?.requiresMfa) {
+      showMfa.value = true
+      message.value = response?.message ?? 'Verificación MFA requerida.'
+      return
+    }
 
     if (!response?.success) {
-      message.value = response?.message ?? 'No se pudo iniciar sesión.'
+      message.value = response?.message ?? securityInfo.value?.message ?? 'No se pudo iniciar sesión.'
       errors.value = Array.isArray(response?.errors) ? response.errors : []
       return
     }
@@ -68,6 +139,7 @@ async function onSubmit() {
     errors.value = Array.isArray(error?.errors) ? error.errors : []
   } finally {
     isLoading.value = false
+    delayHint.value = ''
   }
 }
 </script>
@@ -84,7 +156,24 @@ async function onSubmit() {
     </div>
 
     <article class="auth-card">
+      <div class="auth-policy">
+        <Shield :size="16" />
+        <span>
+          Política activa: {{ policy.maxFailedAttempts }} intentos · bloqueo {{ policy.lockoutMinutes }} min ·
+          captcha desde el {{ policy.captchaAfterAttempts }}.º intento
+        </span>
+      </div>
+
       <form class="auth-form" @submit.prevent="onSubmit">
+        <div v-if="suspiciousAlert" class="auth-alert">
+          <AlertTriangle :size="18" />
+          <div>
+            <strong>Actividad sospechosa detectada</strong>
+            <p>Se registraron intentos fallidos en esta cuenta. Revisa tu correo o contacta soporte.</p>
+            <p v-if="attemptLabel" class="auth-alert__meta">{{ attemptLabel }}</p>
+          </div>
+        </div>
+
         <label class="auth-field">
           <span>Usuario o correo electrónico</span>
           <div class="auth-input">
@@ -117,6 +206,15 @@ async function onSubmit() {
           </div>
         </label>
 
+        <LoginCaptcha
+          :required="requiresCaptcha"
+          @update:token="captchaToken = $event"
+          @update:answer="captchaAnswer = $event"
+        />
+
+        <MfaChallenge :visible="showMfa" @update:code="mfaCode = $event" />
+
+        <p v-if="delayHint" class="auth-delay">{{ delayHint }}</p>
         <p v-if="message" class="auth-message">{{ message }}</p>
 
         <ul v-if="errors.length" class="auth-errors">
@@ -124,7 +222,13 @@ async function onSubmit() {
         </ul>
 
         <button class="auth-submit" type="submit" :disabled="isLoading">
-          {{ isLoading ? 'Ingresando...' : 'Iniciar sesión' }}
+          {{
+            isLoading
+              ? 'Validando…'
+              : showMfa
+                ? 'Confirmar MFA e ingresar'
+                : 'Iniciar sesión'
+          }}
         </button>
       </form>
 
@@ -191,6 +295,43 @@ async function onSubmit() {
   box-shadow: var(--shadow-lg);
 }
 
+.auth-policy {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.85rem;
+  background: #f8f4f6;
+  font-size: 0.82rem;
+  color: var(--color-text-soft);
+}
+
+.auth-alert {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  background: #fff4e5;
+  border: 1px solid #f5c26b;
+  color: #8a4b00;
+}
+
+.auth-alert strong {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.auth-alert p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.auth-alert__meta {
+  margin-top: 0.35rem !important;
+  font-weight: 700;
+}
+
 .auth-form {
   display: grid;
   gap: 1.2rem;
@@ -228,6 +369,12 @@ async function onSubmit() {
   outline: none;
   font-size: 1rem;
   background: transparent;
+}
+
+.auth-delay {
+  margin: 0;
+  color: #7b173b;
+  font-size: 0.9rem;
 }
 
 .auth-message,
