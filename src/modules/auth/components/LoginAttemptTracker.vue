@@ -5,11 +5,11 @@ import { AUTH_SECURITY_POLICY } from '../../../core/security/auth-security.confi
 
 const props = defineProps({
   failedAttempts: { type: Number, default: 0 },
+  maxFailedAttempts: { type: Number, default: AUTH_SECURITY_POLICY.maxFailedAttempts },
   locked: { type: Boolean, default: false },
 })
 
-const policy = AUTH_SECURITY_POLICY
-const display = computed(() => getAttemptDisplay(props.failedAttempts))
+const display = computed(() => getAttemptDisplay(props.failedAttempts, props.maxFailedAttempts))
 </script>
 
 <template>
@@ -19,7 +19,12 @@ const display = computed(() => getAttemptDisplay(props.failedAttempts))
       <span v-if="failedAttempts > 0" class="attempt-tracker__badge">{{ display.remainingLabel }}</span>
     </div>
 
-    <div class="attempt-tracker__bar" role="progressbar" :aria-valuenow="failedAttempts" :aria-valuemax="policy.maxFailedAttempts">
+    <div
+      class="attempt-tracker__bar"
+      role="progressbar"
+      :aria-valuenow="failedAttempts"
+      :aria-valuemax="maxFailedAttempts"
+    >
       <span
         v-for="step in display.steps"
         :key="step.step"

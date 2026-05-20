@@ -2,17 +2,8 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { loginRequest } from '../modules/auth/services/auth.service'
 import { normalizeRole, normalizeRoles } from '../core/constants/roles'
-import {
-  delay,
-  evaluatePreLogin,
-  getClientIp,
-  recordFailedAttempt,
-  recordSuccessfulLogin,
-  requiresMfa,
-  validateCaptcha,
-  validateMfaCode,
-} from '../core/security/auth-security.service'
-import { logSecurityEvent } from '../core/security/security-logger'
+import { mapLoginSecurityState } from '../core/security/login-security.mapper'
+import { requiresMfa, validateMfaCode } from '../core/security/auth-security.service'
 
 const AUTH_STORAGE_KEY = 'rentixautos.auth.session'
 
@@ -37,6 +28,36 @@ function isExpired(expirationUtc) {
   const expiresAt = Date.parse(expirationUtc)
   if (Number.isNaN(expiresAt)) return false
   return Date.now() >= expiresAt
+}
+
+function buildLoginPayload(credentials, security = {}) {
+  const payload = {
+    username: credentials?.username ?? '',
+    password: credentials?.password ?? '',
+  }
+
+  if (security.captchaToken) {
+    payload.captchaToken = security.captchaToken
+  }
+  if (security.captchaAnswer != null && security.captchaAnswer !== '') {
+    payload.captchaAnswer = security.captchaAnswer
+  }
+
+  return payload
+}
+
+function mapLoginError(error) {
+  const status = error?.status ?? 0
+  const security = mapLoginSecurityState(error?.data, status)
+
+  return {
+    success: false,
+    message: error?.message || 'No se pudo iniciar sesión.',
+    errors: Array.isArray(error?.errors) ? error.errors : [],
+    status,
+    data: error?.data ?? null,
+    security: security ? { ...security, message: error?.message } : null,
+  }
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -84,62 +105,21 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(credentials, security = {}) {
-    const username = credentials?.username ?? ''
-    const clientIp = security.clientIp ?? getClientIp()
-
-    const preCheck = evaluatePreLogin(username, clientIp)
-    if (!preCheck.allowed) {
-      return {
-        success: false,
-        message: preCheck.message,
-        errors: [],
-        security: preCheck,
-      }
-    }
-
-    if (preCheck.progressiveDelayMs > 0) {
-      await delay(preCheck.progressiveDelayMs)
-    }
-
-    if (preCheck.requiresCaptcha) {
-      const captchaOk = validateCaptcha(security.captchaToken, security.captchaAnswer)
-      if (!captchaOk) {
-        logSecurityEvent({
-          level: 'warn',
-          type: 'CAPTCHA_FAILED',
-          username,
-          ip: clientIp,
-          message: 'Captcha incorrecto o expirado',
-        })
-        const failState = recordFailedAttempt(username, clientIp)
-        return {
-          success: false,
-          message: failState.message || 'Captcha incorrecto o expirado. Intenta de nuevo.',
-          errors: [],
-          security: { ...preCheck, ...failState, requiresCaptcha: true },
-        }
-      }
-    }
-
     let response
+
     try {
-      response = await loginRequest(credentials)
+      response = await loginRequest(buildLoginPayload(credentials, security))
     } catch (error) {
-      const failState = recordFailedAttempt(username, clientIp)
-      return {
-        success: false,
-        message: failState.message || error?.message || 'No se pudo iniciar sesión.',
-        errors: Array.isArray(error?.errors) ? error.errors : [],
-        security: failState,
-      }
+      return mapLoginError(error)
     }
 
     if (!response.success) {
-      const failState = recordFailedAttempt(username, clientIp)
+      const status = response.status ?? 401
+      const mapped = mapLoginSecurityState(response.data, status)
       return {
         ...response,
-        message: failState.message || response.message,
-        security: failState,
+        status,
+        security: mapped ? { ...mapped, message: response.message } : null,
       }
     }
 
@@ -151,13 +131,12 @@ export const useAuthStore = defineStore('auth', () => {
             ? 'Código MFA inválido. Debe tener 6 dígitos.'
             : 'Completa la verificación MFA para continuar.',
           errors: [],
-          security: { requiresMfa: true, ...preCheck },
+          security: { requiresMfa: true },
         }
       }
     }
 
     const backendUser = response.data ?? {}
-    recordSuccessfulLogin(username, clientIp)
     setSession({
       token: backendUser.token,
       user: {
@@ -199,14 +178,6 @@ export const useAuthStore = defineStore('auth', () => {
     return normalizedAllowedRoles.some((role) => roles.value.includes(role))
   }
 
-  function registerFailedLoginAttempt(username) {
-    return recordFailedAttempt(username, getClientIp())
-  }
-
-  function resetLoginSecurity(username) {
-    recordSuccessfulLogin(username, getClientIp())
-  }
-
   return {
     token,
     user,
@@ -214,8 +185,6 @@ export const useAuthStore = defineStore('auth', () => {
     expirationUtc,
     isAuthenticated,
     login,
-    registerFailedLoginAttempt,
-    resetLoginSecurity,
     logout,
     ensureValidSession,
     setSession,

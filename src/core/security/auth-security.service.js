@@ -110,7 +110,7 @@ export function requiresCaptcha(username) {
 }
 
 export function requiresMfa() {
-  return true
+  return false
 }
 
 export function validateMfaCode(code) {
@@ -262,8 +262,8 @@ export function recordSuccessfulLogin(username, ip = getClientIp()) {
   })
 }
 
-export function getAttemptDisplay(failedAttempts = 0) {
-  const policy = AUTH_SECURITY_POLICY
+export function getAttemptDisplay(failedAttempts = 0, maxFailedAttempts = AUTH_SECURITY_POLICY.maxFailedAttempts) {
+  const policy = { ...AUTH_SECURITY_POLICY, maxFailedAttempts }
   const current = Math.min(failedAttempts, policy.maxFailedAttempts)
   const remaining = Math.max(0, policy.maxFailedAttempts - current)
   const captchaIn = Math.max(0, policy.captchaAfterAttempts - current)

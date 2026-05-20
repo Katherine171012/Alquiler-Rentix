@@ -1,17 +1,12 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AlertTriangle, CarFront, LockKeyhole, Mail } from 'lucide-vue-next'
 import { ROLES } from '../../../core/constants/roles'
-import {
-  delay,
-  getProgressiveDelayMs,
-  getSecurityStatus,
-} from '../../../core/security/auth-security.service.js'
+import { formatLockoutCountdown } from '../../../core/security/login-security.mapper'
 import { useAuthStore } from '../../../stores/auth.store'
 import LoginAttemptTracker from '../components/LoginAttemptTracker.vue'
 import LoginCaptcha from '../components/LoginCaptcha.vue'
-import MfaChallenge from '../components/MfaChallenge.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -26,37 +21,71 @@ const isLoading = ref(false)
 const message = ref('')
 const errors = ref([])
 const securityInfo = ref(null)
-const showMfa = ref(false)
 const captchaToken = ref('')
 const captchaAnswer = ref('')
-const mfaCode = ref('')
+const lockoutRemainingSeconds = ref(0)
+let lockoutTimer = null
 
-const requiresCaptcha = computed(() => {
-  if (securityInfo.value?.requiresCaptcha) return true
-  return getSecurityStatus(form.username).requiresCaptcha
+const normalizedUsername = computed(() => {
+  const raw = form.username.trim()
+  if (!raw) return ''
+  return raw.includes('@') ? raw.split('@')[0] : raw
 })
 
-const suspiciousAlert = computed(() => {
-  const status = getSecurityStatus(form.username)
-  return securityInfo.value?.suspicious || status.suspicious
-})
+const requiresCaptcha = computed(() => securityInfo.value?.requiresCaptcha ?? false)
 
-const failedAttempts = computed(() => {
-  return securityInfo.value?.failedAttempts ?? getSecurityStatus(form.username).failedAttempts ?? 0
-})
+const suspiciousAlert = computed(() => securityInfo.value?.suspicious ?? false)
 
-const isLocked = computed(() => {
-  return securityInfo.value?.locked ?? getSecurityStatus(form.username).locked ?? false
-})
+const failedAttempts = computed(() => securityInfo.value?.failedAttempts ?? 0)
 
-const showAttemptTracker = computed(() => failedAttempts.value > 0)
+const maxFailedAttempts = computed(() => securityInfo.value?.maxFailedAttempts ?? 5)
 
-watch(
-  () => form.username,
-  () => {
-    securityInfo.value = getSecurityStatus(form.username)
-  },
-)
+const isLocked = computed(() => securityInfo.value?.locked ?? false)
+
+const isAccountLocked = computed(() => isLocked.value && (securityInfo.value?.httpStatus === 423 || lockoutRemainingSeconds.value > 0))
+
+const showAttemptTracker = computed(() => failedAttempts.value > 0 || isLocked.value)
+
+const lockoutCountdownLabel = computed(() => formatLockoutCountdown(lockoutRemainingSeconds.value))
+
+const formDisabled = computed(() => isLoading.value || isAccountLocked.value)
+
+function clearLockoutTimer() {
+  if (lockoutTimer) {
+    clearInterval(lockoutTimer)
+    lockoutTimer = null
+  }
+}
+
+function startLockoutCountdown(seconds) {
+  clearLockoutTimer()
+  const initial = Math.max(0, Math.floor(Number(seconds) || 0))
+  if (initial <= 0) return
+
+  lockoutRemainingSeconds.value = initial
+  lockoutTimer = setInterval(() => {
+    if (lockoutRemainingSeconds.value <= 1) {
+      lockoutRemainingSeconds.value = 0
+      clearLockoutTimer()
+      if (securityInfo.value) {
+        securityInfo.value = { ...securityInfo.value, locked: false }
+      }
+      return
+    }
+    lockoutRemainingSeconds.value -= 1
+  }, 1000)
+}
+
+function applySecurityState(security) {
+  securityInfo.value = security ?? null
+
+  if (security?.locked && security.lockoutRemainingSeconds > 0) {
+    startLockoutCountdown(security.lockoutRemainingSeconds)
+  } else {
+    lockoutRemainingSeconds.value = 0
+    clearLockoutTimer()
+  }
+}
 
 function resolveRedirectByRole() {
   if (authStore.hasAnyRole([ROLES.ADMIN, ROLES.VENDEDOR])) {
@@ -66,10 +95,9 @@ function resolveRedirectByRole() {
   return '/mi-cuenta/perfil'
 }
 
-function normalizeUsername(value) {
-  const raw = value.trim()
-  return raw.includes('@') ? raw.split('@')[0] : raw
-}
+onBeforeUnmount(() => {
+  clearLockoutTimer()
+})
 
 async function onSubmit() {
   message.value = ''
@@ -85,8 +113,10 @@ async function onSubmit() {
     return
   }
 
-  if (isLocked.value) {
-    message.value = securityInfo.value?.message ?? getSecurityStatus(form.username).message
+  if (isAccountLocked.value) {
+    message.value =
+      securityInfo.value?.message ||
+      `Cuenta bloqueada temporalmente. Intenta en ${lockoutCountdownLabel.value || 'unos minutos'}.`
     return
   }
 
@@ -95,45 +125,39 @@ async function onSubmit() {
     return
   }
 
-  if (showMfa.value && mfaCode.value.length !== 6) {
-    message.value = 'Ingresa el código MFA de 6 dígitos.'
-    return
-  }
-
   isLoading.value = true
 
   try {
-    const normalizedUsername = normalizeUsername(form.username)
-    const progressiveMs = getProgressiveDelayMs(getSecurityStatus(normalizedUsername).failedAttempts)
-
-    if (progressiveMs > 0) {
-      await delay(progressiveMs)
-    }
+    const username = normalizedUsername.value
 
     const response = await authStore.login(
       {
-        username: normalizedUsername,
+        username,
         password: form.password,
       },
       {
         captchaToken: captchaToken.value,
         captchaAnswer: captchaAnswer.value,
-        mfaCode: mfaCode.value,
-        mfaVerified: showMfa.value && mfaCode.value.length === 6,
       },
     )
 
-    securityInfo.value = response?.security ?? getSecurityStatus(normalizedUsername)
-
-    if (response?.security?.requiresMfa) {
-      showMfa.value = true
-      message.value = response?.message ?? 'Verificación MFA requerida.'
-      return
+    if (response?.security?.cleared) {
+      applySecurityState(null)
+    } else if (response?.security) {
+      applySecurityState(response.security)
     }
 
     if (!response?.success) {
-      message.value =
-        response?.security?.message ?? response?.message ?? securityInfo.value?.message ?? 'No se pudo iniciar sesión.'
+      const status = response?.status ?? response?.security?.httpStatus ?? 0
+
+      if (status === 423) {
+        message.value =
+          response?.message ||
+          `Cuenta bloqueada temporalmente. Intenta en ${lockoutCountdownLabel.value || 'unos minutos'}.`
+      } else {
+        message.value = response?.message ?? 'Credenciales incorrectas.'
+      }
+
       errors.value = Array.isArray(response?.errors) ? response.errors : []
       return
     }
@@ -145,10 +169,7 @@ async function onSubmit() {
 
     await router.push(redirectTarget)
   } catch (error) {
-    const normalizedUsername = normalizeUsername(form.username)
-    const failState = authStore.registerFailedLoginAttempt(normalizedUsername)
-    securityInfo.value = failState
-    message.value = failState.message ?? error?.message ?? 'No se pudo iniciar sesión.'
+    message.value = error?.message ?? 'No se pudo iniciar sesión.'
     errors.value = Array.isArray(error?.errors) ? error.errors : []
   } finally {
     isLoading.value = false
@@ -171,11 +192,23 @@ async function onSubmit() {
       <LoginAttemptTracker
         v-if="showAttemptTracker"
         :failed-attempts="failedAttempts"
+        :max-failed-attempts="maxFailedAttempts"
         :locked="isLocked"
       />
 
       <form class="auth-form" @submit.prevent="onSubmit">
-        <div v-if="suspiciousAlert" class="auth-alert">
+        <div v-if="isAccountLocked" class="auth-alert auth-alert--locked">
+          <LockKeyhole :size="18" />
+          <div>
+            <strong>Cuenta bloqueada temporalmente</strong>
+            <p>
+              {{ securityInfo?.message || 'Demasiados intentos fallidos.' }}
+              <span v-if="lockoutCountdownLabel"> Podrás intentar de nuevo en {{ lockoutCountdownLabel }}.</span>
+            </p>
+          </div>
+        </div>
+
+        <div v-else-if="suspiciousAlert" class="auth-alert">
           <AlertTriangle :size="18" />
           <div>
             <strong>Actividad sospechosa detectada</strong>
@@ -194,7 +227,7 @@ async function onSubmit() {
               placeholder="Ingresa tu usuario o correo"
               autocomplete="username"
               required
-              :disabled="isLoading || isLocked"
+              :disabled="formDisabled"
             />
           </div>
         </label>
@@ -210,31 +243,31 @@ async function onSubmit() {
               placeholder="Ingresa tu contraseña"
               autocomplete="current-password"
               required
-              :disabled="isLoading || isLocked"
+              :disabled="formDisabled"
             />
           </div>
         </label>
 
         <LoginCaptcha
-          :required="requiresCaptcha"
+          :required="requiresCaptcha && !isAccountLocked"
           @update:token="captchaToken = $event"
           @update:answer="captchaAnswer = $event"
         />
 
-        <MfaChallenge :visible="showMfa" @update:code="mfaCode = $event" />
-
-        <p v-if="message" class="auth-message">{{ message }}</p>
+        <p v-if="message" class="auth-message" :class="{ 'auth-message--locked': isAccountLocked }">
+          {{ message }}
+        </p>
 
         <ul v-if="errors.length" class="auth-errors">
           <li v-for="(error, index) in errors" :key="`${error}-${index}`">{{ error }}</li>
         </ul>
 
-        <button class="auth-submit" type="submit" :disabled="isLoading || isLocked">
+        <button class="auth-submit" type="submit" :disabled="formDisabled">
           {{
             isLoading
               ? 'Validando…'
-              : showMfa
-                ? 'Confirmar MFA e ingresar'
+              : isAccountLocked
+                ? 'Cuenta bloqueada'
                 : 'Iniciar sesión'
           }}
         </button>
@@ -313,6 +346,12 @@ async function onSubmit() {
   color: #8a4b00;
 }
 
+.auth-alert--locked {
+  background: #fde8e8;
+  border-color: #f5a8a8;
+  color: #7f1d1d;
+}
+
 .auth-alert strong {
   display: block;
   margin-bottom: 0.2rem;
@@ -366,6 +405,11 @@ async function onSubmit() {
 .auth-errors {
   margin: 0;
   color: #b42318;
+}
+
+.auth-message--locked {
+  color: #7f1d1d;
+  font-weight: 600;
 }
 
 .auth-errors {
