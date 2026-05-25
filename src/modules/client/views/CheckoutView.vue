@@ -19,6 +19,7 @@ import { agregarExtraReserva, listarExtrasReserva } from '../../../api/reservasE
 import { useAuthStore } from '../../../stores/auth.store'
 import { useReservaStore } from '../../../stores/reserva.store'
 import { construirUrlImagenVehiculo } from '../../../utils/imagenesVehiculo'
+import { verificarDisponibilidadVehiculo } from '../../../api/reservas.api'
 import {
   confirmClientReservation,
   createClientReservation,
@@ -253,6 +254,22 @@ async function confirmarYCrearReserva() {
       return
     }
 
+    if (!estaRetomandoPendiente.value && reservaStore.idVehiculo) {
+      try {
+        const { disponible } = await verificarDisponibilidadVehiculo(
+          reservaStore.idVehiculo,
+          reservaStore.fechaInicio,
+          reservaStore.fechaFin,
+        )
+        if (!disponible) {
+          error.value = 'Este vehículo ya tiene una reserva en las fechas seleccionadas. Cambia las fechas o elige otro vehículo.'
+          return
+        }
+      } catch {
+        // Si falla la verificación, permitir continuar
+      }
+    }
+
     const conductores = obtenerConductoresNormalizados()
 
     if (!conductores.length) {
@@ -424,7 +441,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
           </p>
         </header>
 
-        <div v-if="error" class="alert alert-danger" role="alert">{{ error }}</div>
+        <p v-if="error" class="feedback feedback--error">{{ error }}</p>
 
         <div class="checkout-layout">
           <section class="checkout-main">
@@ -455,39 +472,37 @@ onMounted(cargarLocalizacionesSeleccionadas)
                 <CalendarDays :size="22" />
                 Fechas y ubicación
               </h2>
-              <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Fecha de Recogida</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><CalendarDays :size="16" /></span>
+              <div class="checkout-dates-grid">
+                <label class="checkout-field">
+                  <span class="checkout-field__label">Fecha de Recogida</span>
+                  <div class="checkout-field__input">
+                    <CalendarDays :size="18" />
                     <input
                       v-model="reservaStore.fechaInicio"
                       type="date"
-                      class="form-control"
                       :min="new Date().toISOString().slice(0, 10)"
                     />
                   </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Fecha de Entrega</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><CalendarDays :size="16" /></span>
+                </label>
+                <label class="checkout-field">
+                  <span class="checkout-field__label">Fecha de Entrega</span>
+                  <div class="checkout-field__input">
+                    <CalendarDays :size="18" />
                     <input
                       v-model="reservaStore.fechaFin"
                       type="date"
-                      class="form-control"
                       :min="reservaStore.fechaInicio || new Date().toISOString().slice(0, 10)"
                     />
                   </div>
-                </div>
+                </label>
               </div>
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <small class="text-muted d-block mb-1">Lugar de Recogida</small>
+              <div class="checkout-dates-grid" style="margin-top: 1rem;">
+                <div class="checkout-location">
+                  <small>Lugar de Recogida</small>
                   <strong>{{ nombreLocalizacion(localizacionRecogida, reservaStore.idLocalizacionRecogida) }}</strong>
                 </div>
-                <div class="col-md-6">
-                  <small class="text-muted d-block mb-1">Lugar de Entrega</small>
+                <div class="checkout-location">
+                  <small>Lugar de Entrega</small>
                   <strong>{{ nombreLocalizacion(localizacionEntrega, reservaStore.idLocalizacionEntrega) }}</strong>
                 </div>
               </div>
@@ -499,29 +514,26 @@ onMounted(cargarLocalizacionesSeleccionadas)
                 Conductores Autorizados
               </h2>
 
-              <div v-if="reservaStore.conductores.length" class="row g-3">
-                <div
+              <div v-if="reservaStore.conductores.length" class="checkout-conductores-grid">
+                <article
                   v-for="conductor in reservaStore.conductores"
                   :key="conductor.id"
-                  class="col-md-6"
+                  class="checkout-conductor-card"
+                  :class="{ 'checkout-conductor-card--principal': conductor.principal }"
                 >
-                  <div class="card h-100" :class="conductor.principal ? 'border-primary' : ''">
-                    <div class="card-body pb-2">
-                      <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="card-title mb-0">{{ conductor.nombreCompleto }}</h6>
-                        <span v-if="conductor.principal" class="badge bg-primary">Principal</span>
-                      </div>
-                      <ul class="list-unstyled small text-muted mb-0">
-                        <li><strong>{{ conductor.tipoIdentificacion }}:</strong> {{ conductor.numeroIdentificacion }}</li>
-                        <li><strong>Licencia:</strong> {{ conductor.numeroLicencia }}</li>
-                        <li v-if="conductor.telefono"><strong>Tel:</strong> {{ conductor.telefono }}</li>
-                        <li v-if="conductor.correo"><strong>Correo:</strong> {{ conductor.correo }}</li>
-                      </ul>
-                    </div>
+                  <div class="checkout-conductor-card__head">
+                    <strong>{{ conductor.nombreCompleto }}</strong>
+                    <span v-if="conductor.principal" class="checkout-conductor-badge">Principal</span>
                   </div>
-                </div>
+                  <div class="checkout-conductor-card__details">
+                    <span>{{ conductor.tipoIdentificacion }}: {{ conductor.numeroIdentificacion }}</span>
+                    <span>Licencia: {{ conductor.numeroLicencia }}</span>
+                    <span v-if="conductor.telefono">Tel: {{ conductor.telefono }}</span>
+                    <span v-if="conductor.correo">{{ conductor.correo }}</span>
+                  </div>
+                </article>
               </div>
-              <div v-else class="alert alert-warning mb-0" role="alert">
+              <div v-else class="checkout-no-conductores">
                 No agregaste conductores para esta reserva. Vuelve al paso anterior para agregar al menos uno.
               </div>
             </article>
@@ -641,23 +653,22 @@ onMounted(cargarLocalizacionesSeleccionadas)
 
           <section class="success-section" v-if="reservaStore.conductores.length">
             <h2>Conductores</h2>
-            <div class="row g-2">
-              <div
+            <div class="checkout-conductores-grid">
+              <article
                 v-for="conductor in reservaStore.conductores"
                 :key="conductor.id"
-                class="col-md-6"
+                class="checkout-conductor-card"
+                :class="{ 'checkout-conductor-card--principal': conductor.principal }"
               >
-                <div class="card" :class="conductor.principal ? 'border-primary' : ''">
-                  <div class="card-body py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <strong>{{ conductor.nombreCompleto }}</strong>
-                      <span v-if="conductor.principal" class="badge bg-primary">Principal</span>
-                    </div>
-                    <small class="text-muted d-block">Licencia: {{ conductor.numeroLicencia }}</small>
-                    <small v-if="conductor.telefono" class="text-muted d-block">Tel: {{ conductor.telefono }}</small>
-                  </div>
+                <div class="checkout-conductor-card__head">
+                  <strong>{{ conductor.nombreCompleto }}</strong>
+                  <span v-if="conductor.principal" class="checkout-conductor-badge">Principal</span>
                 </div>
-              </div>
+                <div class="checkout-conductor-card__details">
+                  <span>Licencia: {{ conductor.numeroLicencia }}</span>
+                  <span v-if="conductor.telefono">Tel: {{ conductor.telefono }}</span>
+                </div>
+              </article>
             </div>
           </section>
 
@@ -1073,6 +1084,111 @@ onMounted(cargarLocalizacionesSeleccionadas)
   color: #b42318;
 }
 
+/* Date fields */
+
+.checkout-dates-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+.checkout-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.checkout-field__label {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.checkout-field__input {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.4rem;
+  padding: 0 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+}
+
+.checkout-field__input svg {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.checkout-field__input input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 1rem;
+}
+
+.checkout-location small {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--color-text-muted);
+}
+
+/* Conductor cards */
+
+.checkout-conductores-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.checkout-conductor-card {
+  border: 1px solid var(--color-border);
+  border-radius: 1.1rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.checkout-conductor-card--principal {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.checkout-conductor-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem 0.5rem;
+}
+
+.checkout-conductor-badge {
+  display: inline-flex;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7b173b, #571027);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.checkout-conductor-card__details {
+  padding: 0 1.1rem 0.85rem;
+}
+
+.checkout-conductor-card__details span {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  margin-top: 0.2rem;
+}
+
+.checkout-no-conductores {
+  padding: 1rem 1.2rem;
+  border-radius: 1rem;
+  background: #fef9ec;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.95rem;
+}
+
 @media (max-width: 980px) {
   .checkout-layout {
     grid-template-columns: 1fr;
@@ -1084,7 +1200,9 @@ onMounted(cargarLocalizacionesSeleccionadas)
   .checkout-actions,
   .success-actions,
   .vehicle-card,
-  .success-card__head {
+  .success-card__head,
+  .checkout-dates-grid,
+  .checkout-conductores-grid {
     grid-template-columns: 1fr;
     flex-direction: column;
   }

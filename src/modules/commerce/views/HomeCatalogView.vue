@@ -115,7 +115,7 @@ onMounted(async () => {
         <form class="hero__search" @submit.prevent="buscarDisponibilidad">
           <label>
             Ubicación
-            <select v-model="filtros.ubicacion" class="form-select" :disabled="cargandoLocalizaciones">
+            <select v-model="filtros.ubicacion" :disabled="cargandoLocalizaciones">
               <option value="">
                 {{ cargandoLocalizaciones ? 'Cargando localizaciones...' : 'Selecciona una localizacion' }}
               </option>
@@ -130,11 +130,11 @@ onMounted(async () => {
           </label>
           <label>
             Fecha de recogida
-            <input v-model="filtros.fechaInicio" type="date" class="form-control" :min="fechaHoy" />
+            <input v-model="filtros.fechaInicio" type="date" :min="fechaHoy" />
           </label>
           <label>
             Fecha de entrega
-            <input v-model="filtros.fechaFin" type="date" class="form-control" :min="filtros.fechaInicio || fechaHoy" />
+            <input v-model="filtros.fechaFin" type="date" :min="filtros.fechaInicio || fechaHoy" />
           </label>
           <button type="submit" class="hero__cta" :disabled="!puedeBuscar || cargando">
             {{ cargando ? 'Buscando...' : 'Buscar disponibilidad' }}

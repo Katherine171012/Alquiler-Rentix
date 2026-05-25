@@ -76,6 +76,38 @@ export function cancelarReserva(idReserva) {
   return api.post(`/reservas/${idReserva}/cancelar`)
 }
 
+export async function verificarDisponibilidadVehiculo(idVehiculo, fechaInicio, fechaFin) {
+  try {
+    const response = await api.get('/reservas/consulta', {
+      params: {
+        idVehiculo,
+        pageNumber: 1,
+        pageSize: 200,
+      },
+    })
+
+    const items = response?.data?.items ?? response?.data ?? []
+    if (!Array.isArray(items)) return { disponible: true, reservas: [] }
+
+    const estadosActivos = ['PEN', 'CON', 'ACT', 'Pendiente', 'Confirmada', 'Activa', 'En curso']
+    const inicio = new Date(fechaInicio)
+    const fin = new Date(fechaFin)
+
+    const conflictos = items.filter((r) => {
+      const estado = r.resEstado || r.estado || ''
+      if (!estadosActivos.some((e) => estado.toUpperCase().includes(e.toUpperCase()))) return false
+
+      const rInicio = new Date(r.resFechaInicio || r.fechaInicio)
+      const rFin = new Date(r.resFechaFin || r.fechaFin)
+      return inicio < rFin && fin > rInicio
+    })
+
+    return { disponible: conflictos.length === 0, reservas: conflictos }
+  } catch {
+    return { disponible: true, reservas: [] }
+  }
+}
+
 export function iniciarReserva(idReserva) {
   return api.post(`/reservas/${idReserva}/iniciar`)
 }

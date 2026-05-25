@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, CalendarDays, Fuel, Settings2, UserRound } from 'lucide-vue-next'
 import { obtenerVehiculo } from '../../../api/vehiculos.api'
+import { verificarDisponibilidadVehiculo } from '../../../api/reservas.api'
 import { construirUrlImagenVehiculo } from '../../../utils/imagenesVehiculo'
 import { useReservaStore } from '../../../stores/reserva.store'
 
@@ -41,7 +42,9 @@ async function cargarDetalle() {
   }
 }
 
-function reservarAhora() {
+const verificandoDisponibilidad = ref(false)
+
+async function reservarAhora() {
   fechaError.value = ''
 
   if (!fechaInicio.value || !fechaFin.value) {
@@ -55,6 +58,23 @@ function reservarAhora() {
   if (fechaFin.value <= fechaInicio.value) {
     fechaError.value = 'La fecha de entrega debe ser posterior a la de recogida.'
     return
+  }
+
+  verificandoDisponibilidad.value = true
+  try {
+    const { disponible } = await verificarDisponibilidadVehiculo(
+      vehiculo.value.idVehiculo,
+      fechaInicio.value,
+      fechaFin.value,
+    )
+    if (!disponible) {
+      fechaError.value = 'Este vehículo ya tiene una reserva en las fechas seleccionadas. Por favor elige otras fechas.'
+      return
+    }
+  } catch {
+    // Si falla la verificación, permitir continuar
+  } finally {
+    verificandoDisponibilidad.value = false
   }
 
   reservaStore.setVehiculoSeleccionado(vehiculo.value)
@@ -103,36 +123,31 @@ onMounted(async () => {
             <h3>${{ vehiculo.precioBaseDia }}</h3>
             <span>+ impuestos y cargos</span>
 
-            <div v-if="fechaError" class="alert alert-danger py-2 small" role="alert">
+            <div v-if="fechaError" class="reserva-box__error">
               {{ fechaError }}
             </div>
 
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Fecha de recogida</label>
-              <input
-                v-model="fechaInicio"
-                type="date"
-                class="form-control"
-                :class="{ 'is-invalid': fechaError && !fechaInicio }"
-                :min="fechaHoy"
-              />
-            </div>
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Fecha de entrega</label>
-              <input
-                v-model="fechaFin"
-                type="date"
-                class="form-control"
-                :class="{ 'is-invalid': fechaError && !fechaFin }"
-                :min="fechaInicio || fechaHoy"
-              />
-            </div>
+            <label class="reserva-box__field">
+              <span class="reserva-box__field-label">Fecha de recogida</span>
+              <div class="reserva-box__field-input" :class="{ 'reserva-box__field-input--error': fechaError && !fechaInicio }">
+                <CalendarDays :size="18" />
+                <input v-model="fechaInicio" type="date" :min="fechaHoy" />
+              </div>
+            </label>
+            <label class="reserva-box__field">
+              <span class="reserva-box__field-label">Fecha de entrega</span>
+              <div class="reserva-box__field-input" :class="{ 'reserva-box__field-input--error': fechaError && !fechaFin }">
+                <CalendarDays :size="18" />
+                <input v-model="fechaFin" type="date" :min="fechaInicio || fechaHoy" />
+              </div>
+            </label>
             <button
               type="button"
               class="reserva-btn w-100"
+              :disabled="verificandoDisponibilidad"
               @click="reservarAhora"
             >
-              Reservar ahora
+              {{ verificandoDisponibilidad ? 'Verificando disponibilidad...' : 'Reservar ahora' }}
             </button>
             <small class="reserva-box__note">Cancelación gratuita hasta 24 horas antes</small>
           </aside>
@@ -331,6 +346,65 @@ input:focus {
   color: var(--color-text-muted);
   font-size: 0.88rem;
   margin-top: 0.2rem;
+}
+
+.reserva-box__error {
+  padding: 0.65rem 0.9rem;
+  border-radius: 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.88rem;
+  margin-bottom: 0.4rem;
+}
+
+.reserva-box__field {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.reserva-box__field-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.reserva-box__field-input {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 3.2rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.95rem;
+  background: #fff;
+}
+
+.reserva-box__field-input svg {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.reserva-box__field-input input {
+  flex: 1;
+  border: none;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  outline: none;
+  box-shadow: none;
+}
+
+.reserva-box__field-input:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(106, 18, 48, 0.1);
+}
+
+.reserva-box__field-input--error {
+  border-color: #b42318;
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.1);
 }
 
 .detalle__info,
