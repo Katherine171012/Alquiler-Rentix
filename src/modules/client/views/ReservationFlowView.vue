@@ -15,6 +15,7 @@ import { listarCiudadesPorPais } from '../../../api/ciudades.api'
 import { consultarLocalizaciones } from '../../../api/localizaciones.api'
 import { listarExtras } from '../../../api/extras.api'
 import { obtenerVehiculo } from '../../../api/vehiculos.api'
+import { verificarDisponibilidadVehiculo } from '../../../api/reservas.api'
 import { useReservaStore } from '../../../stores/reserva.store'
 import { construirUrlImagenVehiculo } from '../../../utils/imagenesVehiculo'
 
@@ -252,7 +253,7 @@ function validarPasoDatos() {
   return true
 }
 
-function continuar() {
+async function continuar() {
   error.value = ''
 
   if (currentStep.value === 1 && !validarPasoDatos()) {
@@ -260,6 +261,24 @@ function continuar() {
   }
 
   if (currentStep.value === 1) {
+    cargando.value = true
+    try {
+      const { disponible } = await verificarDisponibilidadVehiculo(
+        reservaStore.idVehiculo,
+        reservaStore.fechaInicio,
+        reservaStore.fechaFin,
+      )
+      if (!disponible) {
+        error.value = 'El vehículo no está disponible en las fechas seleccionadas. Elige otras fechas o vehículo.'
+        return
+      }
+    } catch {
+      error.value = 'No se pudo verificar la disponibilidad. Intenta de nuevo.'
+      return
+    } finally {
+      cargando.value = false
+    }
+
     reservaStore.setPasoActual(2)
     router.push('/reserva/extras')
     return
@@ -513,37 +532,29 @@ watch(
             <article class="flow-card">
               <h2>Fechas de Renta</h2>
 
-              <div v-if="fechaError" class="alert alert-danger py-2" role="alert">
+              <div v-if="fechaError" class="conductor-form__error">
                 {{ fechaError }}
               </div>
 
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Fecha de Recogida *</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><CalendarDays :size="18" /></span>
-                    <input
-                      v-model="reservaStore.fechaInicio"
-                      type="date"
-                      class="form-control"
-                      :class="{ 'is-invalid': fechaError && !reservaStore.fechaInicio }"
-                      :min="fechaHoy"
-                    />
+              <div class="flow-grid">
+                <label class="field">
+                  <span>Fecha de Recogida *</span>
+                  <div class="field__input" :class="{ 'field__input--error': fechaError && !reservaStore.fechaInicio }">
+                    <CalendarDays :size="20" />
+                    <input v-model="reservaStore.fechaInicio" type="date" :min="fechaHoy" />
                   </div>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Fecha de Entrega *</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><CalendarDays :size="18" /></span>
+                </label>
+                <label class="field">
+                  <span>Fecha de Entrega *</span>
+                  <div class="field__input" :class="{ 'field__input--error': fechaError && !reservaStore.fechaFin }">
+                    <CalendarDays :size="20" />
                     <input
                       v-model="reservaStore.fechaFin"
                       type="date"
-                      class="form-control"
-                      :class="{ 'is-invalid': fechaError && !reservaStore.fechaFin }"
                       :min="reservaStore.fechaInicio || fechaHoy"
                     />
                   </div>
-                </div>
+                </label>
               </div>
             </article>
 
@@ -679,12 +690,12 @@ watch(
 
           <template v-else>
             <article class="flow-card">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="mb-0">Conductores Autorizados</h2>
+              <div class="conductores-header">
+                <h2>Conductores Autorizados</h2>
                 <button
                   v-if="!mostrandoFormularioConductor"
                   type="button"
-                  class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1"
+                  class="conductor-add-btn"
                   @click="mostrandoFormularioConductor = true"
                 >
                   <Plus :size="16" />
@@ -695,161 +706,160 @@ watch(
               <!-- Empty state -->
               <div
                 v-if="!reservaStore.conductores.length && !mostrandoFormularioConductor"
-                class="text-center py-5 border border-2 border-dashed rounded-3"
+                class="conductor-empty"
               >
-                <UserRound :size="56" class="text-secondary mb-3" />
-                <p class="text-muted fs-5 mb-3">No has agregado conductores</p>
-                <button type="button" class="btn btn-primary" @click="mostrandoFormularioConductor = true">
+                <UserRound :size="56" />
+                <p>No has agregado conductores</p>
+                <button type="button" class="conductor-add-btn" @click="mostrandoFormularioConductor = true">
                   Agregar Primer Conductor
                 </button>
               </div>
 
               <!-- Formulario agregar conductor -->
-              <div v-if="mostrandoFormularioConductor" class="card border-0 bg-light mb-3">
-                <div class="card-body">
-                  <h6 class="card-title mb-3">Nuevo Conductor</h6>
+              <div v-if="mostrandoFormularioConductor" class="conductor-form">
+                <h3 class="conductor-form__title">Nuevo Conductor</h3>
 
-                  <div v-if="conductorFormError" class="alert alert-danger py-2 mb-3" role="alert">
-                    {{ conductorFormError }}
-                  </div>
+                <div v-if="conductorFormError" class="conductor-form__error">
+                  {{ conductorFormError }}
+                </div>
 
-                  <div class="row g-3">
-                    <div class="col-md-6">
-                      <label class="form-label">Tipo de Identificación *</label>
-                      <select v-model="conductorForm.tipoIdentificacion" class="form-select">
+                <div class="flow-grid">
+                  <label class="field">
+                    <span>Tipo de Identificación *</span>
+                    <div class="field__input">
+                      <select v-model="conductorForm.tipoIdentificacion">
                         <option value="CED">Cédula</option>
                         <option value="PAS">Pasaporte</option>
                         <option value="RUC">RUC</option>
                       </select>
                     </div>
+                  </label>
 
-                    <div class="col-md-6">
-                      <label class="form-label">Número de Identificación *</label>
-                      <input v-model="conductorForm.numeroIdentificacion" type="text" class="form-control" placeholder="Ej: 1723456789" />
+                  <label class="field">
+                    <span>Número de Identificación *</span>
+                    <div class="field__input">
+                      <input v-model="conductorForm.numeroIdentificacion" type="text" placeholder="Ej: 1723456789" />
                     </div>
+                  </label>
 
-                    <div class="col-md-6">
-                      <label class="form-label">Primer Nombre *</label>
-                      <input v-model="conductorForm.conNombre1" type="text" class="form-control" placeholder="Ej: Juan" />
+                  <label class="field">
+                    <span>Primer Nombre *</span>
+                    <div class="field__input">
+                      <input v-model="conductorForm.conNombre1" type="text" placeholder="Ej: Juan" />
                     </div>
+                  </label>
 
-                    <div class="col-md-6">
-                      <label class="form-label">Segundo Nombre</label>
-                      <input v-model="conductorForm.conNombre2" type="text" class="form-control" placeholder="Ej: Carlos" />
+                  <label class="field">
+                    <span>Segundo Nombre</span>
+                    <div class="field__input">
+                      <input v-model="conductorForm.conNombre2" type="text" placeholder="Ej: Carlos" />
                     </div>
+                  </label>
 
-                    <div class="col-md-6">
-                      <label class="form-label">Primer Apellido *</label>
-                      <input v-model="conductorForm.conApellido1" type="text" class="form-control" placeholder="Ej: Pérez" />
+                  <label class="field">
+                    <span>Primer Apellido *</span>
+                    <div class="field__input">
+                      <input v-model="conductorForm.conApellido1" type="text" placeholder="Ej: Pérez" />
                     </div>
+                  </label>
 
-                    <div class="col-md-6">
-                      <label class="form-label">Segundo Apellido</label>
-                      <input v-model="conductorForm.conApellido2" type="text" class="form-control" placeholder="Ej: Gómez" />
+                  <label class="field">
+                    <span>Segundo Apellido</span>
+                    <div class="field__input">
+                      <input v-model="conductorForm.conApellido2" type="text" placeholder="Ej: Gómez" />
                     </div>
+                  </label>
 
-                    <div class="col-md-6">
-                      <label class="form-label">Número de Licencia *</label>
-                      <input v-model="conductorForm.numeroLicencia" type="text" class="form-control" placeholder="Ej: LIC123456" />
+                  <label class="field">
+                    <span>Número de Licencia *</span>
+                    <div class="field__input">
+                      <input v-model="conductorForm.numeroLicencia" type="text" placeholder="Ej: LIC123456" />
                     </div>
+                  </label>
 
-                    <div class="col-md-6">
-                      <label class="form-label">Vencimiento de Licencia *</label>
-                      <div class="input-group">
-                        <span class="input-group-text"><CalendarDays :size="16" /></span>
-                        <input
-                          v-model="conductorForm.fechaVencimientoLicencia"
-                          type="date"
-                          class="form-control"
-                          :class="{ 'is-invalid': conductorFormError && !conductorForm.fechaVencimientoLicencia }"
-                          :min="reservaStore.fechaFin || fechaHoy"
-                        />
-                      </div>
-                      <div class="form-text text-muted">
-                        Debe ser válida hasta al menos la fecha de entrega.
-                      </div>
+                  <label class="field">
+                    <span>Vencimiento de Licencia *</span>
+                    <div class="field__input">
+                      <CalendarDays :size="18" />
+                      <input
+                        v-model="conductorForm.fechaVencimientoLicencia"
+                        type="date"
+                        :min="reservaStore.fechaFin || fechaHoy"
+                      />
                     </div>
+                    <small class="field__hint">Debe ser válida hasta la fecha de entrega.</small>
+                  </label>
 
-                    <div class="col-md-4">
-                      <label class="form-label">Edad *</label>
-                      <input v-model.number="conductorForm.edadConductor" type="number" class="form-control" min="18" max="99" />
+                  <label class="field">
+                    <span>Edad *</span>
+                    <div class="field__input">
+                      <input v-model.number="conductorForm.edadConductor" type="number" min="18" max="99" />
                     </div>
+                  </label>
 
-                    <div class="col-md-4">
-                      <label class="form-label">Teléfono</label>
-                      <input v-model="conductorForm.telefono" type="text" class="form-control" placeholder="Ej: 0999999999" />
+                  <label class="field">
+                    <span>Teléfono</span>
+                    <div class="field__input">
+                      <input v-model="conductorForm.telefono" type="text" placeholder="Ej: 0999999999" />
                     </div>
+                  </label>
 
-                    <div class="col-md-4">
-                      <label class="form-label">Correo</label>
-                      <input v-model="conductorForm.correo" type="email" class="form-control" placeholder="conductor@correo.com" />
+                  <label class="field">
+                    <span>Correo</span>
+                    <div class="field__input">
+                      <input v-model="conductorForm.correo" type="email" placeholder="conductor@correo.com" />
                     </div>
-                  </div>
+                  </label>
+                </div>
 
-                  <div class="d-flex gap-2 mt-3">
-                    <button type="button" class="btn btn-primary" @click="guardarConductor">
-                      <Check :size="16" class="me-1" />
-                      Agregar
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" @click="cancelarConductor">
-                      Cancelar
-                    </button>
-                  </div>
+                <div class="conductor-form__actions">
+                  <button type="button" class="conductor-btn conductor-btn--primary" @click="guardarConductor">
+                    <Check :size="16" />
+                    Agregar
+                  </button>
+                  <button type="button" class="conductor-btn conductor-btn--secondary" @click="cancelarConductor">
+                    Cancelar
+                  </button>
                 </div>
               </div>
 
-              <!-- Lista de conductores como tarjetas Bootstrap -->
-              <div v-if="reservaStore.conductores.length" class="row g-3">
-                <div
+              <!-- Lista de conductores -->
+              <div v-if="reservaStore.conductores.length" class="conductores-grid">
+                <article
                   v-for="(conductor, index) in reservaStore.conductores"
                   :key="conductor.id"
-                  class="col-md-6"
+                  class="conductor-card"
+                  :class="{ 'conductor-card--principal': conductor.principal }"
                 >
-                  <div class="card h-100" :class="conductor.principal ? 'border-primary' : ''">
-                    <div class="card-body pb-2">
-                      <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="card-title mb-0">{{ conductor.nombreCompleto }}</h6>
-                        <span v-if="conductor.principal" class="badge bg-primary">Principal</span>
-                      </div>
-
-                      <ul class="list-unstyled small text-muted mb-0">
-                        <li>
-                          <strong>{{ conductor.tipoIdentificacion }}:</strong>
-                          {{ conductor.numeroIdentificacion }}
-                        </li>
-                        <li>
-                          <strong>Licencia:</strong> {{ conductor.numeroLicencia }}
-                        </li>
-                        <li v-if="conductor.fechaVencimientoLicencia">
-                          <strong>Vence:</strong> {{ conductor.fechaVencimientoLicencia }}
-                        </li>
-                        <li v-if="conductor.telefono">
-                          <strong>Tel:</strong> {{ conductor.telefono }}
-                        </li>
-                        <li v-if="conductor.correo">
-                          <strong>Correo:</strong> {{ conductor.correo }}
-                        </li>
-                      </ul>
-                    </div>
-                    <div class="card-footer bg-transparent d-flex gap-2">
-                      <button
-                        v-if="!conductor.principal"
-                        type="button"
-                        class="btn btn-outline-primary btn-sm"
-                        @click="marcarPrincipal(index)"
-                      >
-                        Marcar como principal
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-outline-danger btn-sm ms-auto"
-                        @click="quitarConductor(index)"
-                      >
-                        Quitar
-                      </button>
-                    </div>
+                  <div class="conductor-card__head">
+                    <strong>{{ conductor.nombreCompleto }}</strong>
+                    <span v-if="conductor.principal" class="conductor-badge">Principal</span>
                   </div>
-                </div>
+                  <div class="conductor-card__details">
+                    <span>{{ conductor.tipoIdentificacion }}: {{ conductor.numeroIdentificacion }}</span>
+                    <span>Licencia: {{ conductor.numeroLicencia }}</span>
+                    <span v-if="conductor.fechaVencimientoLicencia">Vence: {{ conductor.fechaVencimientoLicencia }}</span>
+                    <span v-if="conductor.telefono">Tel: {{ conductor.telefono }}</span>
+                    <span v-if="conductor.correo">{{ conductor.correo }}</span>
+                  </div>
+                  <div class="conductor-card__actions">
+                    <button
+                      v-if="!conductor.principal"
+                      type="button"
+                      class="conductor-btn conductor-btn--outline"
+                      @click="marcarPrincipal(index)"
+                    >
+                      Marcar como principal
+                    </button>
+                    <button
+                      type="button"
+                      class="conductor-btn conductor-btn--danger"
+                      @click="quitarConductor(index)"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </article>
               </div>
             </article>
           </template>
@@ -860,9 +870,9 @@ watch(
               Volver
             </button>
 
-            <button type="button" class="btn-primary btn-primary--wide" @click="continuar">
-              Continuar
-              <ArrowRight :size="18" />
+            <button type="button" class="btn-primary btn-primary--wide" :disabled="cargando" @click="continuar">
+              {{ cargando ? 'Verificando disponibilidad...' : 'Continuar' }}
+              <ArrowRight v-if="!cargando" :size="18" />
             </button>
           </footer>
         </section>
@@ -1102,6 +1112,204 @@ watch(
 }
 
 
+/* Conductores */
+
+.conductores-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.3rem;
+}
+
+.conductores-header h2 {
+  margin: 0;
+}
+
+.conductor-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 0.85rem;
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.conductor-add-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.conductor-empty {
+  border: 2px dashed var(--color-border);
+  border-radius: 1.2rem;
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.conductor-empty svg {
+  color: var(--color-text-muted);
+}
+
+.conductor-empty p {
+  margin: 0.5rem 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+}
+
+.conductor-form {
+  padding: 1.4rem;
+  border-radius: 1.2rem;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border);
+  margin-bottom: 1.2rem;
+}
+
+.conductor-form__title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+
+.conductor-form__error {
+  padding: 0.7rem 1rem;
+  border-radius: 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.conductor-form__actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+}
+
+.conductores-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.2rem;
+}
+
+.conductor-card {
+  border: 1px solid var(--color-border);
+  border-radius: 1.1rem;
+  background: #fff;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.conductor-card--principal {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.conductor-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 0.5rem;
+}
+
+.conductor-card__head strong {
+  font-size: 1.05rem;
+}
+
+.conductor-badge {
+  display: inline-flex;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7b173b, #571027);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.conductor-card__details {
+  padding: 0 1.1rem 0.75rem;
+}
+
+.conductor-card__details span {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  margin-top: 0.2rem;
+}
+
+.conductor-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.1rem;
+  border-top: 1px solid var(--color-border);
+  background: #fafafa;
+}
+
+.conductor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.conductor-btn--primary {
+  background: linear-gradient(135deg, #7b173b, #571027);
+  color: #fff;
+  border: none;
+}
+
+.conductor-btn--secondary {
+  background: #fff;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.conductor-btn--outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.conductor-btn--outline:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.conductor-btn--danger {
+  background: transparent;
+  color: #b42318;
+  border: 1px solid #fecaca;
+  margin-left: auto;
+}
+
+.conductor-btn--danger:hover {
+  background: #fef2f2;
+}
+
+.field__hint {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 0.3rem;
+}
+
 .flow-actions {
   display: flex;
   justify-content: space-between;
@@ -1169,15 +1377,20 @@ watch(
   }
 }
 
+.field__input--error {
+  border-color: #b42318;
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.1);
+}
+
 @media (max-width: 760px) {
   .flow-grid,
-  .flow-actions {
+  .flow-actions,
+  .conductores-grid {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
 
-  .flow-card__title-row,
-  .conductor-item {
+  .conductores-header {
     flex-direction: column;
     align-items: stretch;
   }
