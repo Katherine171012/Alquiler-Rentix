@@ -1,4 +1,5 @@
 import api from '../../../core/http/axios'
+import internoApi from '../../../core/http/axiosInterno'
 
 function asArray(payload) {
   if (Array.isArray(payload)) return payload
@@ -101,8 +102,8 @@ function formatCurrency(amount) {
 
 async function fetchDashboardData() {
   const [clientesResponse, vehiculosResponse, reservasResponse, facturasResponse] = await Promise.all([
-    api.get('/clientes?soloActivos=true'),
-    api.get('/vehiculos'),
+    internoApi.get('/clientes?soloActivos=true'),
+    internoApi.get('/vehiculos'),
     api.get('/reservas/consulta?pageNumber=1&pageSize=200'),
     api.get('/facturas/consulta?pageNumber=1&pageSize=200'),
   ])

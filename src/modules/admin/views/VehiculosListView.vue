@@ -55,6 +55,7 @@ function createVehiculoForm() {
     numeroPuertas: 4,
     precioBaseDia: 0,
     kilometrajeActual: 0,
+    observacionesGenerales: '',
   }
 }
 
@@ -146,6 +147,7 @@ async function openEdit(idVehiculo) {
       numeroPuertas: vehiculo.numeroPuertas ?? 4,
       precioBaseDia: vehiculo.precioBaseDia ?? 0,
       kilometrajeActual: vehiculo.kilometrajeActual ?? 0,
+      observacionesGenerales: vehiculo.observacionesGenerales ?? '',
     }
     activeModal.value = 'form'
   } catch (error) {
@@ -213,6 +215,7 @@ async function submitVehiculo() {
       numeroPuertas: Number(form.value.numeroPuertas),
       precioBaseDia: Number(form.value.precioBaseDia),
       kilometrajeActual: Number(form.value.kilometrajeActual),
+      observacionesGenerales: form.value.observacionesGenerales || '',
     }
 
     if (form.value.idVehiculo) {
@@ -465,6 +468,10 @@ onMounted(loadVehiculos)
           <label>Kilometraje actual *</label>
           <input v-model="form.kilometrajeActual" type="number" min="0" required />
         </div>
+        <div class="admin-field">
+          <label>Observaciones</label>
+          <textarea v-model="form.observacionesGenerales" rows="3" placeholder="Observaciones del vehículo"></textarea>
+        </div>
       </form>
 
       <template #footer>
@@ -487,9 +494,22 @@ onMounted(loadVehiculos)
 
         <article class="admin-detail-card">
           <dl>
-            <div><dt>Estado</dt><dd><AdminStatusBadge v-bind="vehicleStateMeta(selectedVehiculo.estadoVehiculo)" /></dd></div>
-            <div><dt>Localizacion</dt><dd>{{ localizacionMap[selectedVehiculo.localizacionActual] || '-' }}</dd></div>
-            <div><dt>Precio</dt><dd>{{ formatCurrency(selectedVehiculo.precioBaseDia) }}/dia</dd></div>
+            <div>
+              <dt>Estado</dt>
+              <dd><AdminStatusBadge v-bind="vehicleStateMeta(selectedVehiculo.estadoVehiculo)" /></dd>
+            </div>
+            <div>
+              <dt>Localizacion</dt>
+              <dd>{{ localizacionMap[selectedVehiculo.localizacionActual] || '-' }}</dd>
+            </div>
+            <div>
+              <dt>Precio</dt>
+              <dd>{{ formatCurrency(selectedVehiculo.precioBaseDia) }}/dia</dd>
+            </div>
+            <div>
+              <dt>Observaciones</dt>
+              <dd>{{ selectedVehiculo.observacionesGenerales || '-' }}</dd>
+            </div>
           </dl>
         </article>
       </div>

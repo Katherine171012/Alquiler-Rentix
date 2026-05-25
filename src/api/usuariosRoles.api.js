@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarRolesUsuario(idUsuario) {
   return api.get('/usuarios-roles', {

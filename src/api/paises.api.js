@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarPaises(params) {
   return api.get('/paises', { params })

@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarUsuarios(params) {
   return api.get('/usuarios', { params })
@@ -16,8 +16,9 @@ export function actualizarUsuario(idUsuario, payload) {
   return api.put(`/usuarios/${idUsuario}`, payload)
 }
 
-export function buscarUsuarios(payload) {
-  return api.post('/usuarios/buscar', payload)
+/** El MS Seguridad no tiene POST buscar; se usa listado GET. */
+export function buscarUsuarios(params) {
+  return listarUsuarios(params)
 }
 
 export function inactivarUsuario(idUsuario) {

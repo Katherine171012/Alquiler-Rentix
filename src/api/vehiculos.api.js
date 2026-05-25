@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarVehiculos(params) {
   return api.get('/vehiculos', { params })
@@ -30,10 +30,12 @@ export function activarVehiculo(idVehiculo) {
   return api.post(`/vehiculos/${idVehiculo}/activar`)
 }
 
+/** MS Catálogo V1: no hay /mantenimiento; se usa inactivar (estado INA). */
 export function marcarVehiculoMantenimiento(idVehiculo) {
-  return api.post(`/vehiculos/${idVehiculo}/mantenimiento`)
+  return inactivarVehiculo(idVehiculo)
 }
 
+/** MS Catálogo V1: no hay /disponible; se usa activar (estado ACT). */
 export function marcarVehiculoDisponible(idVehiculo) {
-  return api.post(`/vehiculos/${idVehiculo}/disponible`)
+  return activarVehiculo(idVehiculo)
 }

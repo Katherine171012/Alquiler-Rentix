@@ -19,11 +19,18 @@ function asArray(payload) {
   return []
 }
 
+function getClientCorreo(client) {
+  return (client?.correo ?? client?.cliCorreoElectronico ?? client?.correoElectronico ?? '').trim()
+}
+
 export function getUserDisplayName(user, client) {
-  const fullName = [client?.cliNombres, client?.cliApellidos].filter(Boolean).join(' ').trim()
+  const fullName = [client?.nombres ?? client?.cliNombres, client?.apellidos ?? client?.cliApellidos]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
   return (
     fullName ||
-    client?.cliRazonSocial ||
+    (client?.razonSocial ?? client?.cliRazonSocial) ||
     user?.username ||
     user?.correo?.split('@')?.[0] ||
     'Cliente Demo'
@@ -31,20 +38,34 @@ export function getUserDisplayName(user, client) {
 }
 
 export function getClientEmail(user, client) {
-  return client?.cliCorreoElectronico || user?.correo || ''
+  return getClientCorreo(client) || user?.correo || ''
 }
 
+/**
+ * Resuelve el cliente del usuario autenticado.
+ * Prioridad: idCliente en sesión → único registro del listado (rol CLIENTE) → coincidencia por correo.
+ */
 export async function resolveCurrentClient(user) {
-  if (!user?.correo) return null
+  if (!user) return null
+
+  const idFromSession = Number(user.idCliente)
+  if (Number.isFinite(idFromSession) && idFromSession > 0) {
+    return { idCliente: idFromSession, correo: user.correo ?? '' }
+  }
 
   const response = await listarClientes()
   const clientes = asArray(response?.data)
-  const correo = user.correo.toLowerCase()
+  if (!clientes.length) return null
+
+  if (clientes.length === 1) {
+    return clientes[0]
+  }
+
+  const correo = user.correo?.trim().toLowerCase()
+  if (!correo) return null
 
   return (
-    clientes.find((client) => client?.cliCorreoElectronico?.toLowerCase() === correo) ??
-    clientes.find((client) => client?.correoElectronico?.toLowerCase() === correo) ??
-    null
+    clientes.find((client) => getClientCorreo(client).toLowerCase() === correo) ?? null
   )
 }
 

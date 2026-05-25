@@ -78,7 +78,8 @@ async function cargarVehiculosFiltrados() {
         fechaInicioUtc: new Date(contextoDisponibilidad.value.fechaInicio).toISOString(),
         fechaFinUtc: new Date(contextoDisponibilidad.value.fechaFin).toISOString(),
       })
-      vehiculos.value = response?.data?.items ?? response?.data ?? []
+      const raw = response?.data?.items ?? response?.data ?? []
+      vehiculos.value = raw.map((item) => item?.vehiculo ?? item)
       totalRegistros.value = vehiculos.value.length
       totalPaginas.value = 1
       paginaActual.value = 1

@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarConductores(params) {
   return api.get('/conductores', { params })

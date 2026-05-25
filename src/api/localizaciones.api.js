@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarLocalizaciones(params) {
   return api.get('/localizaciones', { params })

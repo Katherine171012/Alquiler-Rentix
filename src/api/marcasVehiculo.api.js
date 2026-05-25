@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarMarcasVehiculo(params) {
   return api.get('/marcas-vehiculo', { params })

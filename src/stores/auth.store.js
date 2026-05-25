@@ -141,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
       token: backendUser.token,
       user: {
         idUsuario: backendUser.idUsuario,
+        idCliente: backendUser.idCliente ?? null,
         username: backendUser.username,
         correo: backendUser.correo,
         activo: backendUser.activo,

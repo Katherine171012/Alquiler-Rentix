@@ -94,6 +94,7 @@ async function onSubmit() {
       token: response?.data?.token,
       user: {
         idUsuario: response?.data?.idUsuario,
+        idCliente: response?.data?.idCliente ?? null,
         username: response?.data?.username,
         correo: response?.data?.correo ?? form.correo,
       },

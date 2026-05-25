@@ -160,6 +160,8 @@ const router = createRouter({
           meta: { roles: [ROLES.ADMIN] },
           component: () => import('../modules/admin/views/AuditoriaListView.vue'),
         },
+        // Redirect legacy dashboard URL to the main panel dashboard
+        { path: '/panel/dashboard', redirect: '/panel' },
       ],
     },
     {

@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarExtras(params) {
   return api.get('/extras', { params })

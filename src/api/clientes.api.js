@@ -1,4 +1,4 @@
-import api from './axios'
+import api from './axiosInterno'
 
 export function listarClientes(params) {
   return api.get('/clientes', { params })
