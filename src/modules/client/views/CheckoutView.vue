@@ -237,11 +237,32 @@ async function confirmarYCrearReserva() {
     cargando.value = true
     error.value = ''
 
-    const conductores = obtenerConductoresNormalizados()
-    const conductorPrincipal = conductores.find((conductor) => conductor.principal)
+    if (!reservaStore.fechaInicio || !reservaStore.fechaFin) {
+      error.value = 'Las fechas de recogida y entrega son obligatorias.'
+      return
+    }
 
-    if (!conductores.length || !conductorPrincipal) {
-      error.value = 'Debe asignarse un conductor principal antes de confirmar.'
+    const hoy = new Date().toISOString().slice(0, 10)
+    if (reservaStore.fechaInicio < hoy) {
+      error.value = 'La fecha de recogida no puede ser anterior a hoy.'
+      return
+    }
+
+    if (reservaStore.fechaFin <= reservaStore.fechaInicio) {
+      error.value = 'La fecha de entrega debe ser posterior a la de recogida.'
+      return
+    }
+
+    const conductores = obtenerConductoresNormalizados()
+
+    if (!conductores.length) {
+      error.value = 'Debe agregar al menos un conductor antes de confirmar.'
+      return
+    }
+
+    const principales = conductores.filter((c) => c.principal)
+    if (principales.length !== 1) {
+      error.value = 'Debe existir exactamente un conductor marcado como principal.'
       return
     }
 
@@ -403,7 +424,7 @@ onMounted(cargarLocalizacionesSeleccionadas)
           </p>
         </header>
 
-        <p v-if="error" class="feedback feedback--error">{{ error }}</p>
+        <div v-if="error" class="alert alert-danger" role="alert">{{ error }}</div>
 
         <div class="checkout-layout">
           <section class="checkout-main">
@@ -434,21 +455,39 @@ onMounted(cargarLocalizacionesSeleccionadas)
                 <CalendarDays :size="22" />
                 Fechas y ubicación
               </h2>
-              <div class="detail-grid">
-                <div>
-                  <small>Fecha de Inicio</small>
-                  <strong>{{ formatearFecha(reservaStore.fechaInicio) }}</strong>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Fecha de Recogida</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><CalendarDays :size="16" /></span>
+                    <input
+                      v-model="reservaStore.fechaInicio"
+                      type="date"
+                      class="form-control"
+                      :min="new Date().toISOString().slice(0, 10)"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <small>Fecha de Fin</small>
-                  <strong>{{ formatearFecha(reservaStore.fechaFin) }}</strong>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Fecha de Entrega</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><CalendarDays :size="16" /></span>
+                    <input
+                      v-model="reservaStore.fechaFin"
+                      type="date"
+                      class="form-control"
+                      :min="reservaStore.fechaInicio || new Date().toISOString().slice(0, 10)"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <small>Lugar de Recogida</small>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <small class="text-muted d-block mb-1">Lugar de Recogida</small>
                   <strong>{{ nombreLocalizacion(localizacionRecogida, reservaStore.idLocalizacionRecogida) }}</strong>
                 </div>
-                <div>
-                  <small>Lugar de Entrega</small>
+                <div class="col-md-6">
+                  <small class="text-muted d-block mb-1">Lugar de Entrega</small>
                   <strong>{{ nombreLocalizacion(localizacionEntrega, reservaStore.idLocalizacionEntrega) }}</strong>
                 </div>
               </div>
@@ -460,21 +499,31 @@ onMounted(cargarLocalizacionesSeleccionadas)
                 Conductores Autorizados
               </h2>
 
-              <div v-if="reservaStore.conductores.length" class="drivers-list">
-                <article
+              <div v-if="reservaStore.conductores.length" class="row g-3">
+                <div
                   v-for="conductor in reservaStore.conductores"
                   :key="conductor.id"
-                  class="driver-card"
+                  class="col-md-6"
                 >
-                  <div>
-                    <strong>{{ conductor.nombreCompleto }}</strong>
-                    <span>Licencia: {{ conductor.numeroLicencia }}</span>
-                    <span>{{ conductor.tipoIdentificacion }}: {{ conductor.numeroIdentificacion }}</span>
+                  <div class="card h-100" :class="conductor.principal ? 'border-primary' : ''">
+                    <div class="card-body pb-2">
+                      <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">{{ conductor.nombreCompleto }}</h6>
+                        <span v-if="conductor.principal" class="badge bg-primary">Principal</span>
+                      </div>
+                      <ul class="list-unstyled small text-muted mb-0">
+                        <li><strong>{{ conductor.tipoIdentificacion }}:</strong> {{ conductor.numeroIdentificacion }}</li>
+                        <li><strong>Licencia:</strong> {{ conductor.numeroLicencia }}</li>
+                        <li v-if="conductor.telefono"><strong>Tel:</strong> {{ conductor.telefono }}</li>
+                        <li v-if="conductor.correo"><strong>Correo:</strong> {{ conductor.correo }}</li>
+                      </ul>
+                    </div>
                   </div>
-                  <span v-if="conductor.principal" class="driver-card__badge">Principal</span>
-                </article>
+                </div>
               </div>
-              <p v-else class="empty-note">No agregaste conductores adicionales para esta reserva.</p>
+              <div v-else class="alert alert-warning mb-0" role="alert">
+                No agregaste conductores para esta reserva. Vuelve al paso anterior para agregar al menos uno.
+              </div>
             </article>
 
             <footer class="checkout-actions">
@@ -591,14 +640,25 @@ onMounted(cargarLocalizacionesSeleccionadas)
           </section>
 
           <section class="success-section" v-if="reservaStore.conductores.length">
-            <h2>Conductor principal</h2>
-            <article class="driver-card">
-              <div>
-                <strong>{{ reservaStore.conductores[0]?.nombreCompleto }}</strong>
-                <span>Licencia: {{ reservaStore.conductores[0]?.numeroLicencia }}</span>
-                <span v-if="reservaStore.conductores[0]?.telefono">Tel: {{ reservaStore.conductores[0]?.telefono }}</span>
+            <h2>Conductores</h2>
+            <div class="row g-2">
+              <div
+                v-for="conductor in reservaStore.conductores"
+                :key="conductor.id"
+                class="col-md-6"
+              >
+                <div class="card" :class="conductor.principal ? 'border-primary' : ''">
+                  <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <strong>{{ conductor.nombreCompleto }}</strong>
+                      <span v-if="conductor.principal" class="badge bg-primary">Principal</span>
+                    </div>
+                    <small class="text-muted d-block">Licencia: {{ conductor.numeroLicencia }}</small>
+                    <small v-if="conductor.telefono" class="text-muted d-block">Tel: {{ conductor.telefono }}</small>
+                  </div>
+                </div>
               </div>
-            </article>
+            </div>
           </section>
 
           <section class="success-section">
@@ -793,42 +853,6 @@ onMounted(cargarLocalizacionesSeleccionadas)
   color: var(--color-text-muted);
 }
 
-.drivers-list {
-  display: grid;
-  gap: 1rem;
-}
-
-.driver-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.1rem;
-  border-radius: 1rem;
-  background: #f7f7f8;
-}
-
-.driver-card strong,
-.driver-card span {
-  display: block;
-}
-
-.driver-card span {
-  margin-top: 0.25rem;
-  color: var(--color-text-muted);
-}
-
-.driver-card__badge {
-  align-self: start;
-  padding: 0.4rem 0.8rem;
-  border-radius: 999px;
-  color: #fff !important;
-  background: linear-gradient(135deg, #7b173b, #571027);
-}
-
-.empty-note {
-  margin: 0;
-  color: var(--color-text-muted);
-}
 
 .checkout-actions,
 .success-actions {
@@ -1060,7 +1084,6 @@ onMounted(cargarLocalizacionesSeleccionadas)
   .checkout-actions,
   .success-actions,
   .vehicle-card,
-  .driver-card,
   .success-card__head {
     grid-template-columns: 1fr;
     flex-direction: column;

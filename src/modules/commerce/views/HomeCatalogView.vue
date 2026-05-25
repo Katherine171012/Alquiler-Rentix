@@ -6,8 +6,11 @@ import { consultarLocalizaciones } from '../../../api/localizaciones.api'
 import { consultarDisponibilidadVehiculos } from '../../../api/reservas.api'
 import { consultarVehiculos } from '../../../api/vehiculos.api'
 import { construirUrlImagenVehiculo } from '../../../utils/imagenesVehiculo'
+import { useReservaStore } from '../../../stores/reserva.store'
 
 const router = useRouter()
+const reservaStore = useReservaStore()
+const fechaHoy = new Date().toISOString().slice(0, 10)
 const cargando = ref(false)
 const error = ref('')
 const vehiculos = ref([])
@@ -58,6 +61,15 @@ async function cargarLocalizacionesActivas() {
 async function buscarDisponibilidad() {
   if (!puedeBuscar.value) return
 
+  if (filtros.value.fechaInicio < fechaHoy) {
+    error.value = 'La fecha de recogida no puede ser anterior a hoy.'
+    return
+  }
+  if (filtros.value.fechaFin <= filtros.value.fechaInicio) {
+    error.value = 'La fecha de entrega debe ser posterior a la fecha de recogida.'
+    return
+  }
+
   try {
     cargando.value = true
     error.value = ''
@@ -66,6 +78,11 @@ async function buscarDisponibilidad() {
       idLocalizacion: Number(filtros.value.ubicacion),
       fechaInicioUtc: new Date(filtros.value.fechaInicio).toISOString(),
       fechaFinUtc: new Date(filtros.value.fechaFin).toISOString(),
+    })
+
+    reservaStore.setFechas({
+      inicio: filtros.value.fechaInicio,
+      fin: filtros.value.fechaFin,
     })
 
     await router.push({
@@ -98,7 +115,7 @@ onMounted(async () => {
         <form class="hero__search" @submit.prevent="buscarDisponibilidad">
           <label>
             Ubicación
-            <select v-model="filtros.ubicacion" :disabled="cargandoLocalizaciones">
+            <select v-model="filtros.ubicacion" class="form-select" :disabled="cargandoLocalizaciones">
               <option value="">
                 {{ cargandoLocalizaciones ? 'Cargando localizaciones...' : 'Selecciona una localizacion' }}
               </option>
@@ -113,11 +130,11 @@ onMounted(async () => {
           </label>
           <label>
             Fecha de recogida
-            <input v-model="filtros.fechaInicio" type="date" />
+            <input v-model="filtros.fechaInicio" type="date" class="form-control" :min="fechaHoy" />
           </label>
           <label>
             Fecha de entrega
-            <input v-model="filtros.fechaFin" type="date" />
+            <input v-model="filtros.fechaFin" type="date" class="form-control" :min="filtros.fechaInicio || fechaHoy" />
           </label>
           <button type="submit" class="hero__cta" :disabled="!puedeBuscar || cargando">
             {{ cargando ? 'Buscando...' : 'Buscar disponibilidad' }}

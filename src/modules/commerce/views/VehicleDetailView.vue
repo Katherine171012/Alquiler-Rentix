@@ -1,20 +1,31 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, CalendarDays, Fuel, Settings2, UserRound } from 'lucide-vue-next'
 import { obtenerVehiculo } from '../../../api/vehiculos.api'
 import { construirUrlImagenVehiculo } from '../../../utils/imagenesVehiculo'
+import { useReservaStore } from '../../../stores/reserva.store'
 
 const route = useRoute()
+const router = useRouter()
+const reservaStore = useReservaStore()
+
 const cargando = ref(false)
 const error = ref('')
 const vehiculo = ref(null)
 const fechaInicio = ref('')
 const fechaFin = ref('')
+const fechaError = ref('')
+
+const fechaHoy = computed(() => new Date().toISOString().slice(0, 10))
 
 const titulo = computed(() => {
   if (!vehiculo.value) return 'Detalle del vehículo'
   return `${vehiculo.value.nombreMarca} ${vehiculo.value.modeloVehiculo}`
+})
+
+watch([fechaInicio, fechaFin], ([inicio, fin]) => {
+  reservaStore.setFechas({ inicio: inicio || '', fin: fin || '' })
 })
 
 async function cargarDetalle() {
@@ -30,7 +41,40 @@ async function cargarDetalle() {
   }
 }
 
-onMounted(cargarDetalle)
+function reservarAhora() {
+  fechaError.value = ''
+
+  if (!fechaInicio.value || !fechaFin.value) {
+    fechaError.value = 'Selecciona fecha de recogida y fecha de entrega.'
+    return
+  }
+  if (fechaInicio.value < fechaHoy.value) {
+    fechaError.value = 'La fecha de recogida no puede ser anterior a hoy.'
+    return
+  }
+  if (fechaFin.value <= fechaInicio.value) {
+    fechaError.value = 'La fecha de entrega debe ser posterior a la de recogida.'
+    return
+  }
+
+  reservaStore.setVehiculoSeleccionado(vehiculo.value)
+  reservaStore.setFechas({ inicio: fechaInicio.value, fin: fechaFin.value })
+  router.push({ path: '/reserva/datos', query: { idVehiculo: vehiculo.value.idVehiculo } })
+}
+
+onMounted(async () => {
+  await cargarDetalle()
+
+  const qInicio = route.query.fechaInicio
+  const qFin = route.query.fechaFin
+
+  if (qInicio || reservaStore.fechaInicio) {
+    fechaInicio.value = qInicio || reservaStore.fechaInicio
+  }
+  if (qFin || reservaStore.fechaFin) {
+    fechaFin.value = qFin || reservaStore.fechaFin
+  }
+})
 </script>
 
 <template>
@@ -59,20 +103,37 @@ onMounted(cargarDetalle)
             <h3>${{ vehiculo.precioBaseDia }}</h3>
             <span>+ impuestos y cargos</span>
 
-            <label>
-              Fecha de recogida
-              <input v-model="fechaInicio" type="date" />
-            </label>
-            <label>
-              Fecha de entrega
-              <input v-model="fechaFin" type="date" />
-            </label>
-            <RouterLink
-              :to="`/reserva/datos?idVehiculo=${vehiculo.idVehiculo}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`"
-              class="reserva-btn"
+            <div v-if="fechaError" class="alert alert-danger py-2 small" role="alert">
+              {{ fechaError }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Fecha de recogida</label>
+              <input
+                v-model="fechaInicio"
+                type="date"
+                class="form-control"
+                :class="{ 'is-invalid': fechaError && !fechaInicio }"
+                :min="fechaHoy"
+              />
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Fecha de entrega</label>
+              <input
+                v-model="fechaFin"
+                type="date"
+                class="form-control"
+                :class="{ 'is-invalid': fechaError && !fechaFin }"
+                :min="fechaInicio || fechaHoy"
+              />
+            </div>
+            <button
+              type="button"
+              class="reserva-btn w-100"
+              @click="reservarAhora"
             >
               Reservar ahora
-            </RouterLink>
+            </button>
             <small class="reserva-box__note">Cancelación gratuita hasta 24 horas antes</small>
           </aside>
         </article>
