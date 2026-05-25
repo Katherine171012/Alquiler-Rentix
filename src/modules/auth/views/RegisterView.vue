@@ -209,7 +209,7 @@ async function onSubmit() {
 
         <section class="register-section">
           <h2>Seguridad</h2>
-          <div class="register-grid">
+          <div class="register-grid register-grid--security">
             <label class="register-field">
               <span>Contraseña *</span>
               <div class="register-input">
@@ -222,15 +222,6 @@ async function onSubmit() {
                   @input="passwordRules = getPasswordRulesStatus(form.password)"
                 />
               </div>
-              <ul class="register-password-rules">
-                <li
-                  v-for="rule in passwordRules"
-                  :key="rule.id"
-                  :class="{ 'register-password-rules__ok': rule.met }"
-                >
-                  {{ rule.met ? '✓' : '○' }} {{ rule.label }}
-                </li>
-              </ul>
             </label>
 
             <label class="register-field">
@@ -245,6 +236,16 @@ async function onSubmit() {
                 />
               </div>
             </label>
+
+            <ul class="register-password-rules">
+              <li
+                v-for="rule in passwordRules"
+                :key="rule.id"
+                :class="{ 'register-password-rules__ok': rule.met }"
+              >
+                {{ rule.met ? '✓' : '○' }} {{ rule.label }}
+              </li>
+            </ul>
           </div>
         </section>
 
@@ -345,6 +346,10 @@ async function onSubmit() {
   gap: 1.2rem;
 }
 
+.register-grid--security {
+  align-items: start;
+}
+
 .register-field {
   display: grid;
   gap: 0.55rem;
@@ -423,10 +428,24 @@ async function onSubmit() {
 }
 
 .register-password-rules {
-  margin: 0.35rem 0 0;
-  padding-left: 1.1rem;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 1rem;
+  margin: -0.25rem 0 0;
+  padding: 0.85rem 1rem;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface-muted);
   font-size: 0.85rem;
   color: var(--color-text-muted);
+}
+
+.register-password-rules li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .register-password-rules__ok {
@@ -440,6 +459,10 @@ async function onSubmit() {
   }
 
   .register-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .register-password-rules {
     grid-template-columns: 1fr;
   }
 }
