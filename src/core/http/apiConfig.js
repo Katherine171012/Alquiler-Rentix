@@ -3,13 +3,13 @@ function trimTrailingSlash(url) {
 }
 
 /**
- * Base del middleware: auth, reservas, facturas (sin segmento /interno).
- * Render: VITE_API_URL o VITE_API_BASE_URL → https://.../api/v1
+ * Base del middleware: auth, reservas, facturas (sin /interno).
+ * En Render configurar VITE_API_BASE_URL.
  */
 export function getApiBaseUrl() {
   const raw =
-    import.meta.env.VITE_API_URL ??
     import.meta.env.VITE_API_BASE_URL ??
+    import.meta.env.VITE_API_URL ??
     ''
   return trimTrailingSlash(raw)
 }
@@ -22,8 +22,8 @@ function ensureInternoSuffix(base) {
 }
 
 /**
- * Base para catálogo, clientes, localizaciones, seguridad interna, etc.
- * Render: VITE_INTERNOS_BASE_URL → https://.../api/v1/interno
+ * Base para catálogo, clientes, localizaciones, seguridad interna.
+ * En Render configurar VITE_INTERNOS_BASE_URL.
  * Si falta, se deriva de getApiBaseUrl() + /interno.
  */
 export function getInternoApiBaseUrl() {
@@ -33,7 +33,8 @@ export function getInternoApiBaseUrl() {
   return ensureInternoSuffix(getApiBaseUrl())
 }
 
-if (import.meta.env.DEV) {
-  console.info('[Rentix] API base:', getApiBaseUrl() || '(vacía)')
-  console.info('[Rentix] Interno base:', getInternoApiBaseUrl() || '(vacía)')
-}
+// ── Diagnóstico (siempre visible en consola del navegador) ──
+console.log('VITE_API_BASE_URL =', import.meta.env.VITE_API_BASE_URL ?? '(no definida)')
+console.log('VITE_INTERNOS_BASE_URL =', import.meta.env.VITE_INTERNOS_BASE_URL ?? '(no definida)')
+console.log('[Rentix] API base resuelta:', getApiBaseUrl() || '(vacía — usará el propio origen del frontend)')
+console.log('[Rentix] Interno base resuelta:', getInternoApiBaseUrl() || '(vacía)')
