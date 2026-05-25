@@ -168,32 +168,32 @@ onMounted(async () => {
           </p>
 
           <div class="meta-grid">
-            <div>
-              <UserRound :size="18" />
-              <div>
-                <strong>Capacidad</strong>
-                <span>{{ vehiculo.capacidadPasajeros }} personas</span>
+            <div class="meta-card">
+              <span class="meta-card__icon"><UserRound :size="20" /></span>
+              <div class="meta-card__text">
+                <small>Capacidad</small>
+                <strong>{{ vehiculo.capacidadPasajeros }} personas</strong>
               </div>
             </div>
-            <div>
-              <Settings2 :size="18" />
-              <div>
-                <strong>Transmision</strong>
-                <span>{{ vehiculo.tipoTransmision }}</span>
+            <div class="meta-card">
+              <span class="meta-card__icon"><Settings2 :size="20" /></span>
+              <div class="meta-card__text">
+                <small>Transmision</small>
+                <strong>{{ vehiculo.tipoTransmision }}</strong>
               </div>
             </div>
-            <div>
-              <Fuel :size="18" />
-              <div>
-                <strong>Combustible</strong>
-                <span>{{ vehiculo.tipoCombustible }}</span>
+            <div class="meta-card">
+              <span class="meta-card__icon"><Fuel :size="20" /></span>
+              <div class="meta-card__text">
+                <small>Combustible</small>
+                <strong>{{ vehiculo.tipoCombustible }}</strong>
               </div>
             </div>
-            <div>
-              <CalendarDays :size="18" />
-              <div>
-                <strong>Año</strong>
-                <span>{{ vehiculo.añoFabricacion }}</span>
+            <div class="meta-card">
+              <span class="meta-card__icon"><CalendarDays :size="20" /></span>
+              <div class="meta-card__text">
+                <small>Año</small>
+                <strong>{{ vehiculo.añoFabricacion }}</strong>
               </div>
             </div>
           </div>
@@ -463,39 +463,53 @@ input:focus {
 }
 
 .meta-grid {
-  margin-top: 1.4rem;
+  margin-top: 1.6rem;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
-.meta-grid div {
+.meta-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.7rem;
+  padding: 1.25rem 0.75rem;
   border: 1px solid var(--color-border);
   border-radius: 1.1rem;
-  padding: 1rem;
   background: var(--color-surface-muted);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.meta-grid div svg {
+.meta-card:hover {
+  border-color: rgba(106, 18, 48, 0.2);
+  box-shadow: 0 4px 16px rgba(106, 18, 48, 0.06);
+}
+
+.meta-card__icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem;
+  background: var(--color-primary-soft);
   color: var(--color-primary);
   flex-shrink: 0;
 }
 
-.meta-grid strong,
-.meta-grid span {
+.meta-card__text small {
   display: block;
-}
-
-.meta-grid strong {
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   color: var(--color-text-muted);
+  font-weight: 600;
   margin-bottom: 0.2rem;
 }
 
-.meta-grid span {
+.meta-card__text strong {
+  display: block;
+  font-size: 1rem;
   color: var(--color-text);
   font-weight: 700;
 }
@@ -548,8 +562,14 @@ input:focus {
     margin-top: -3rem;
   }
 
-  .detalle__top,
-  .meta-grid,
+  .detalle__top {
+    grid-template-columns: 1fr;
+  }
+
+  .meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .incluye ul {
     grid-template-columns: 1fr;
   }
@@ -566,6 +586,15 @@ input:focus {
 
   .detalle__heading {
     flex-direction: column;
+  }
+
+  .meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .meta-card {
+    padding: 1rem 0.5rem;
   }
 }
 </style>

@@ -993,19 +993,25 @@ watch(
 }
 
 .location-block {
-  padding: 1.2rem;
+  padding: 1.4rem;
   border: 1px solid var(--color-border);
   border-radius: 1.2rem;
   background: #fafafa;
 }
 
+.location-block + .location-block {
+  margin-top: 1rem;
+}
+
 .location-block h3 {
-  margin: 0 0 1rem;
+  margin: 0 0 1.1rem;
   font-size: 1.05rem;
+  color: var(--color-text);
 }
 
 .location-block__grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 .field {
@@ -1021,11 +1027,13 @@ watch(
 .field__input {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  min-height: 3.7rem;
-  padding: 0 1rem;
+  gap: 0.6rem;
+  min-height: 3.4rem;
+  padding: 0 0.85rem;
   border: 1px solid var(--color-border);
   border-radius: 1rem;
+  background: #fff;
+  min-width: 0;
 }
 
 .field__input svg {
@@ -1036,10 +1044,14 @@ watch(
 .field__input input,
 .field__input select {
   width: 100%;
+  min-width: 0;
   border: none;
   background: transparent;
   outline: none;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .flow-card__title-row {
@@ -1371,21 +1383,26 @@ watch(
 }
 
 
-@media (max-width: 980px) {
-  .flow-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 .field__input--error {
   border-color: #b42318;
   box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.1);
 }
 
+@media (max-width: 980px) {
+  .flow-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .location-block__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-width: 760px) {
   .flow-grid,
   .flow-actions,
-  .conductores-grid {
+  .conductores-grid,
+  .location-block__grid {
     grid-template-columns: 1fr;
     flex-direction: column;
   }

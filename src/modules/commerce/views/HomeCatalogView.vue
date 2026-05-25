@@ -11,6 +11,14 @@ import { useReservaStore } from '../../../stores/reserva.store'
 const router = useRouter()
 const reservaStore = useReservaStore()
 const fechaHoy = new Date().toISOString().slice(0, 10)
+const heroImageUrl = import.meta.env.VITE_HERO_BG_IMAGE || ''
+
+const heroBgStyle = computed(() => {
+  if (!heroImageUrl) return {}
+  return {
+    backgroundImage: `linear-gradient(rgba(65, 8, 26, 0.82), rgba(65, 8, 26, 0.7)), url(${heroImageUrl})`,
+  }
+})
 const cargando = ref(false)
 const error = ref('')
 const vehiculos = ref([])
@@ -107,7 +115,7 @@ onMounted(async () => {
 
 <template>
   <section class="home">
-    <header class="hero">
+    <header class="hero" :style="heroBgStyle">
       <div class="hero__inner">
         <span class="hero__eyebrow">Rentix Autos Ecuador</span>
         <h1>Encuentra tu vehículo ideal</h1>
@@ -264,16 +272,20 @@ onMounted(async () => {
 }
 .hero__search {
   margin: 0 auto;
+  width: 100%;
   max-width: 1020px;
   background: #fff;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1.6rem;
-  padding: 1rem;
+  padding: 1.1rem;
   display: grid;
-  grid-template-columns: 1.25fr 0.9fr 0.9fr auto;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
   gap: 0.85rem;
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
 }
+
 .hero__search label {
   display: grid;
   gap: 0.45rem;
@@ -281,24 +293,36 @@ onMounted(async () => {
   font-size: 0.78rem;
   font-weight: 600;
   text-align: left;
+  min-width: 0;
 }
+
 .hero__search input,
 .hero__search select {
+  width: 100%;
+  min-width: 0;
   border: 1px solid var(--color-border);
   border-radius: 0.95rem;
   height: 52px;
-  padding: 0 0.95rem;
-  font-size: 0.96rem;
+  padding: 0 0.85rem;
+  font-size: 0.95rem;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
+
+.hero__search select {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .hero__search input:focus,
 .hero__search select:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 4px rgba(106, 18, 48, 0.1);
 }
+
 .hero__cta {
   border: none;
   background: linear-gradient(135deg, #7b173b, #571027);
@@ -308,14 +332,15 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   height: 52px;
-  min-width: 210px;
-  padding: 0 1.3rem;
+  padding: 0 1.4rem;
   font-size: 0.95rem;
   font-weight: 700;
-  margin-top: 1.45rem;
+  white-space: nowrap;
   box-shadow: 0 14px 24px rgba(106, 18, 48, 0.24);
   cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
+
 .hero__cta:disabled {
   opacity: 0.72;
   cursor: not-allowed;
@@ -508,51 +533,64 @@ img {
     min-height: 62vh;
     padding: 3rem 1rem 2.5rem;
   }
+
   .hero h1 {
     font-size: clamp(2.3rem, 4.4vw, 2.9rem);
   }
+
   .hero p {
     font-size: clamp(0.98rem, 2.2vw, 1.1rem);
   }
+
   .hero__search {
     grid-template-columns: 1fr 1fr;
     padding: 0.9rem;
   }
+
   .hero__cta {
-    min-width: 0;
+    grid-column: 1 / -1;
     width: 100%;
-    margin-top: 1.25rem;
   }
+
   .benefits__inner {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
 @media (max-width: 640px) {
   .hero {
     min-height: auto;
   }
+
   .hero h1 {
     font-size: clamp(1.9rem, 7vw, 2.3rem);
   }
+
   .hero p {
     font-size: clamp(0.9rem, 3.5vw, 1rem);
   }
+
   .hero__search {
     grid-template-columns: 1fr;
     padding: 0.8rem;
     gap: 0.7rem;
   }
-  .hero__search input {
+
+  .hero__search input,
+  .hero__search select {
     height: 48px;
     font-size: 0.9rem;
   }
+
   .hero__cta {
     height: 48px;
     font-size: 0.9rem;
   }
+
   .benefits__inner,
   .grid {
     grid-template-columns: 1fr;
