@@ -1,76 +1,12 @@
-import axios from 'axios'
-import { useAuthStore } from '../../stores/auth.store'
 import { getApiBaseUrl } from './apiConfig'
-
-function isApiEnvelope(payload) {
-  return (
-    payload &&
-    typeof payload === 'object' &&
-    Object.hasOwn(payload, 'success') &&
-    Object.hasOwn(payload, 'message')
-  )
-}
-
-function normalizeApiError(error) {
-  const responsePayload = error?.response?.data
-
-  if (isApiEnvelope(responsePayload)) {
-    return {
-      ...responsePayload,
-      status: error.response?.status ?? 0,
-    }
-  }
-
-  return {
-    success: false,
-    message:
-      responsePayload?.message ??
-      error?.message ??
-      'No se pudo conectar con el servidor. Intenta nuevamente.',
-    data: responsePayload?.data ?? null,
-    errors: Array.isArray(responsePayload?.errors) ? responsePayload.errors : [],
-    status: error.response?.status ?? 0,
-  }
-}
+import { createRentixAxios } from './rentixAxios'
 
 const apiBaseUrl = getApiBaseUrl()
 
 if (!apiBaseUrl) {
   console.warn(
-    '[Rentix] VITE_API_URL no está definida. Las peticiones irán al mismo origen del frontend.',
+    '[Rentix] VITE_API_URL / VITE_API_BASE_URL no definidas. Las peticiones irán al mismo origen del frontend.',
   )
 }
 
-const api = axios.create({
-  baseURL: apiBaseUrl,
-  timeout: 15000,
-})
-
-api.interceptors.request.use((config) => {
-  const authStore = useAuthStore()
-
-  if (authStore.token) {
-    config.headers = config.headers ?? {}
-    config.headers.Authorization = `Bearer ${authStore.token}`
-  }
-
-  return config
-})
-
-api.interceptors.response.use(
-  (response) => {
-    if (isApiEnvelope(response.data)) {
-      return response.data
-    }
-
-    return {
-      success: true,
-      message: 'Operación exitosa',
-      data: response.data,
-      errors: [],
-    }
-  },
-  (error) => Promise.reject(normalizeApiError(error)),
-)
-
-export default api
+export default createRentixAxios(apiBaseUrl)
