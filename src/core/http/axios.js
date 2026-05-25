@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '../../stores/auth.store'
+import { getApiBaseUrl } from './apiConfig'
 
 function isApiEnvelope(payload) {
   return (
@@ -28,12 +29,20 @@ function normalizeApiError(error) {
       'No se pudo conectar con el servidor. Intenta nuevamente.',
     data: responsePayload?.data ?? null,
     errors: Array.isArray(responsePayload?.errors) ? responsePayload.errors : [],
-    status: error?.response?.status ?? 0,
+    status: error.response?.status ?? 0,
   }
 }
 
+const apiBaseUrl = getApiBaseUrl()
+
+if (!apiBaseUrl) {
+  console.warn(
+    '[Rentix] VITE_API_URL no está definida. Las peticiones irán al mismo origen del frontend.',
+  )
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? '',
+  baseURL: apiBaseUrl,
   timeout: 15000,
 })
 
@@ -44,9 +53,6 @@ api.interceptors.request.use((config) => {
     config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${authStore.token}`
   }
-
-
-
 
   return config
 })
