@@ -92,8 +92,12 @@ export async function verificarDisponibilidadVehiculo(idVehiculo, fechaInicio, f
     const estadosActivos = ['PEN', 'CON', 'ACT', 'Pendiente', 'Confirmada', 'Activa', 'En curso']
     const inicio = new Date(fechaInicio)
     const fin = new Date(fechaFin)
+    const vehiculoId = Number(idVehiculo)
 
     const conflictos = items.filter((r) => {
+      const rVehiculoId = Number(r.resIdVehiculo || r.idVehiculo || 0)
+      if (rVehiculoId !== vehiculoId) return false
+
       const estado = r.resEstado || r.estado || ''
       if (!estadosActivos.some((e) => estado.toUpperCase().includes(e.toUpperCase()))) return false
 
