@@ -1,4 +1,4 @@
-import { listarClientes } from '../../../api/clientes.api'
+import { listarClientes, obtenerCliente } from '../../../api/clientes.api'
 import {
   actualizarReserva,
   cancelarReserva,
@@ -50,7 +50,12 @@ export async function resolveCurrentClient(user) {
 
   const idFromSession = Number(user.idCliente)
   if (Number.isFinite(idFromSession) && idFromSession > 0) {
-    return { idCliente: idFromSession, correo: user.correo ?? '' }
+    try {
+      const response = await obtenerCliente(idFromSession)
+      return response?.data ?? { idCliente: idFromSession, correo: user.correo ?? '' }
+    } catch {
+      return { idCliente: idFromSession, correo: user.correo ?? '' }
+    }
   }
 
   const response = await listarClientes()

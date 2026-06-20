@@ -17,11 +17,14 @@ import { listarExtras } from '../../../api/extras.api'
 import { obtenerVehiculo } from '../../../api/vehiculos.api'
 import { verificarDisponibilidadVehiculo } from '../../../api/reservas.api'
 import { useReservaStore } from '../../../stores/reserva.store'
+import { useAuthStore } from '../../../stores/auth.store'
 import { construirUrlImagenVehiculo } from '../../../utils/imagenesVehiculo'
+import { resolveCurrentClient } from '../services/clientPortal.service'
 
 const route = useRoute()
 const router = useRouter()
 const reservaStore = useReservaStore()
+const authStore = useAuthStore()
 
 const cargando = ref(false)
 const error = ref('')
@@ -31,6 +34,8 @@ const ciudadesEntrega = ref([])
 const localizacionesRecogida = ref([])
 const localizacionesEntrega = ref([])
 const mostrandoFormularioConductor = ref(false)
+const cargandoDatosConductor = ref(false)
+const conductorFormAutollenado = ref(false)
 const extrasDisponibles = ref([])
 
 const conductorForm = reactive({
@@ -331,6 +336,22 @@ function volver() {
 
 const conductorFormError = ref('')
 
+function getClientValue(client, keys = []) {
+  return keys.map((key) => client?.[key]).find((value) => value != null && String(value).trim()) ?? ''
+}
+
+function splitNameParts(value) {
+  const parts = String(value ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  return {
+    first: parts[0] ?? '',
+    second: parts.slice(1).join(' '),
+  }
+}
+
 function resetConductorForm() {
   conductorForm.tipoIdentificacion = 'CED'
   conductorForm.numeroIdentificacion = ''
@@ -344,6 +365,52 @@ function resetConductorForm() {
   conductorForm.telefono = ''
   conductorForm.correo = ''
   conductorFormError.value = ''
+  conductorFormAutollenado.value = false
+}
+
+function fillConductorFormFromClient(client) {
+  const nombres = splitNameParts(getClientValue(client, ['cliNombres', 'nombres']))
+  const apellidos = splitNameParts(getClientValue(client, ['cliApellidos', 'apellidos']))
+
+  conductorForm.tipoIdentificacion = getClientValue(client, ['cliTipoIdentificacion', 'tipoIdentificacion']) || 'CED'
+  conductorForm.numeroIdentificacion = getClientValue(client, [
+    'cliNumeroIdentificacion',
+    'numeroIdentificacion',
+  ])
+  conductorForm.conNombre1 = nombres.first
+  conductorForm.conNombre2 = nombres.second
+  conductorForm.conApellido1 = apellidos.first
+  conductorForm.conApellido2 = apellidos.second
+  conductorForm.telefono = getClientValue(client, ['cliTelefono', 'telefono'])
+  conductorForm.correo = getClientValue(client, ['cliCorreoElectronico', 'correoElectronico', 'correo']) || authStore.user?.correo || ''
+  conductorFormAutollenado.value = Boolean(
+    conductorForm.numeroIdentificacion ||
+      conductorForm.conNombre1 ||
+      conductorForm.conApellido1 ||
+      conductorForm.telefono ||
+      conductorForm.correo,
+  )
+}
+
+async function abrirFormularioConductor() {
+  resetConductorForm()
+  mostrandoFormularioConductor.value = true
+
+  if (!authStore.isAuthenticated) {
+    return
+  }
+
+  cargandoDatosConductor.value = true
+  try {
+    const client = await resolveCurrentClient(authStore.user)
+    if (client) {
+      fillConductorFormFromClient(client)
+    }
+  } catch {
+    conductorFormError.value = 'No se pudieron precargar tus datos. Puedes completar el conductor manualmente.'
+  } finally {
+    cargandoDatosConductor.value = false
+  }
 }
 
 function guardarConductor() {
@@ -696,7 +763,7 @@ watch(
                   v-if="!mostrandoFormularioConductor"
                   type="button"
                   class="conductor-add-btn"
-                  @click="mostrandoFormularioConductor = true"
+                  @click="abrirFormularioConductor"
                 >
                   <Plus :size="16" />
                   Agregar Conductor
@@ -710,7 +777,7 @@ watch(
               >
                 <UserRound :size="56" />
                 <p>No has agregado conductores</p>
-                <button type="button" class="conductor-add-btn" @click="mostrandoFormularioConductor = true">
+                <button type="button" class="conductor-add-btn" @click="abrirFormularioConductor">
                   Agregar Primer Conductor
                 </button>
               </div>
@@ -722,6 +789,12 @@ watch(
                 <div v-if="conductorFormError" class="conductor-form__error">
                   {{ conductorFormError }}
                 </div>
+                <p v-else-if="cargandoDatosConductor" class="field__hint">
+                  Buscando tus datos de cliente...
+                </p>
+                <p v-else-if="conductorFormAutollenado" class="field__hint">
+                  Precargamos tus datos de cliente. Revisa la licencia y ajusta cualquier campo si hace falta.
+                </p>
 
                 <div class="flow-grid">
                   <label class="field">
