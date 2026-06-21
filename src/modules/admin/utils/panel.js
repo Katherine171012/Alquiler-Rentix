@@ -94,7 +94,9 @@ export function fullName(parts = []) {
 export function clienteNombre(cliente, fallbackId = null) {
   return (
     cliente?.nombreCompleto?.trim() ||
+    cliente?.nombreCliente?.trim() ||
     fullName([cliente?.cliNombres, cliente?.cliApellidos]) ||
+    fullName([cliente?.nombres, cliente?.apellidos]) ||
     cliente?.cliRazonSocial ||
     `Cliente #${fallbackId ?? cliente?.idCliente ?? '-'}`
   )
@@ -110,7 +112,7 @@ export function conductorNombre(conductor) {
 }
 
 export function vehiculoNombre(vehiculo) {
-  const marca = vehiculo?.nombreMarca ?? ''
-  const modelo = vehiculo?.modeloVehiculo ?? ''
+  const marca = vehiculo?.nombreMarca ?? vehiculo?.marca?.nombreMarca ?? ''
+  const modelo = vehiculo?.modeloVehiculo ?? vehiculo?.modelo ?? ''
   return fullName([marca, modelo]) || vehiculo?.placaVehiculo || `Vehiculo #${vehiculo?.idVehiculo ?? '-'}`
 }

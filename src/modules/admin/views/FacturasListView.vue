@@ -6,7 +6,7 @@ import { listarClientes } from '../../../api/clientes.api'
 import { descargarImpresionFactura, obtenerFactura, consultarFacturas, generarFactura, anularFactura } from '../../../api/facturas.api'
 import { consultarReservas, obtenerReserva } from '../../../api/reservas.api'
 import { AdminEmptyState, AdminModal, AdminPageHeader, AdminSearchBar, AdminStatusBadge } from '../components'
-import { clienteNombre, formatCurrency, formatDate, getItems, invoiceStateMeta } from '../utils/panel'
+import { clienteNombre, formatCurrency, formatDate, getItems, invoiceStateMeta, vehiculoNombre } from '../utils/panel'
 
 const authStore = useAuthStore()
 const isLoading = ref(true)
@@ -40,8 +40,8 @@ const filteredFacturas = computed(() => {
   return facturas.value.filter((factura) => {
     const haystack = [
       factura.facNumero,
-      factura.facIdReserva,
-      factura.facIdCliente,
+      nombreReservaFactura(factura),
+      nombreClienteFactura(factura),
       invoiceStateMeta(factura.facEstado).label,
     ]
       .filter(Boolean)
@@ -52,14 +52,46 @@ const filteredFacturas = computed(() => {
   })
 })
 
-const clienteMap = computed(() => Object.fromEntries(clientes.value.map((cliente) => [cliente.idCliente, clienteNombre(cliente)])))
+const clienteById = computed(() => Object.fromEntries(clientes.value.map((cliente) => [String(cliente.idCliente), cliente])))
+const reservaById = computed(() => Object.fromEntries(reservas.value.map((reserva) => [String(reserva.idReserva), reserva])))
 
 const reservaOptions = computed(() =>
   reservas.value.map((reserva) => ({
     id: reserva.idReserva,
-    label: `${reserva.resNumeroPublico || `#${reserva.idReserva}`} · ${reserva.vehiculo?.modeloVehiculo || 'Vehiculo'} · ${clienteNombre(reserva.cliente, reserva.resIdCliente)}`,
+    label: reservaOptionLabel(reserva),
   })),
 )
+
+const nombreClienteFormulario = computed(() => {
+  if (!form.value.facIdCliente) return '-'
+  return clienteNombre(clienteById.value[String(form.value.facIdCliente)], form.value.facIdCliente)
+})
+
+function reservaFactura(factura) {
+  return factura?.reserva ?? reservaById.value[String(factura?.facIdReserva)] ?? null
+}
+
+function clienteReserva(reserva) {
+  return reserva?.cliente ?? clienteById.value[String(reserva?.resIdCliente)] ?? null
+}
+
+function clienteFactura(factura) {
+  return factura?.cliente ?? clienteById.value[String(factura?.facIdCliente)] ?? clienteReserva(reservaFactura(factura))
+}
+
+function nombreReservaFactura(factura) {
+  const reserva = reservaFactura(factura)
+  if (!reserva) return factura?.facIdReserva ? `Reserva #${factura.facIdReserva}` : '-'
+  return reserva.resNumeroPublico || `#${reserva.idReserva}`
+}
+
+function nombreClienteFactura(factura) {
+  return clienteNombre(clienteFactura(factura), factura?.facIdCliente)
+}
+
+function reservaOptionLabel(reserva) {
+  return `${reserva.resNumeroPublico || `#${reserva.idReserva}`} · ${vehiculoNombre(reserva.vehiculo)} · ${clienteNombre(clienteReserva(reserva), reserva.resIdCliente)}`
+}
 
 function resetMessages() {
   errorMessage.value = ''
@@ -208,8 +240,8 @@ onMounted(loadFacturas)
           <tbody v-if="!isLoading && filteredFacturas.length">
             <tr v-for="factura in filteredFacturas" :key="factura.idFactura">
               <td><strong>{{ factura.facNumero }}</strong></td>
-              <td>{{ factura.facIdReserva }}</td>
-              <td>{{ clienteMap[factura.facIdCliente] || factura.facIdCliente }}</td>
+              <td>{{ nombreReservaFactura(factura) }}</td>
+              <td>{{ nombreClienteFactura(factura) }}</td>
               <td>{{ formatDate(factura.facFechaEmisionUtc) }}</td>
               <td><strong>{{ formatCurrency(factura.facTotal) }}</strong></td>
               <td><AdminStatusBadge v-bind="invoiceStateMeta(factura.facEstado)" /></td>
@@ -261,7 +293,7 @@ onMounted(loadFacturas)
         </div>
 
         <div class="admin-grid admin-grid--3">
-          <div class="admin-field"><label>Cliente</label><input :value="form.facIdCliente || '-'" readonly /></div>
+          <div class="admin-field"><label>Cliente</label><input :value="nombreClienteFormulario" readonly /></div>
           <div class="admin-field"><label>Subtotal</label><input v-model="form.facSubtotal" type="number" min="0" step="0.01" required /></div>
           <div class="admin-field"><label>Impuesto</label><input v-model="form.facImpuesto" type="number" min="0" step="0.01" required /></div>
         </div>
@@ -285,8 +317,8 @@ onMounted(loadFacturas)
         <article class="admin-detail-card">
           <dl>
             <div><dt>Numero</dt><dd>{{ selectedFactura.facNumero }}</dd></div>
-            <div><dt>Reserva</dt><dd>{{ selectedFactura.facIdReserva }}</dd></div>
-            <div><dt>Cliente</dt><dd>{{ selectedFactura.facIdCliente }}</dd></div>
+            <div><dt>Reserva</dt><dd>{{ nombreReservaFactura(selectedFactura) }}</dd></div>
+            <div><dt>Cliente</dt><dd>{{ nombreClienteFactura(selectedFactura) }}</dd></div>
           </dl>
         </article>
         <article class="admin-detail-card">

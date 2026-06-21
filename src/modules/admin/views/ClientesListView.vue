@@ -42,8 +42,8 @@ const filteredClientes = computed(() => {
     const haystack = [
       clienteNombre(cliente),
       cliente.cliNumeroIdentificacion,
-      cliente.cliCorreoElectronico,
-      cliente.cliTelefono,
+      clienteCorreo(cliente),
+      clienteTelefono(cliente),
       activeStateMeta(cliente.cliEstado).label,
     ]
       .filter(Boolean)
@@ -57,6 +57,18 @@ const filteredClientes = computed(() => {
 function resetMessages() {
   errorMessage.value = ''
   successMessage.value = ''
+}
+
+function clienteCorreo(cliente) {
+  return cliente?.cliCorreoElectronico || cliente?.correoElectronico || cliente?.correo || '-'
+}
+
+function clienteTelefono(cliente) {
+  return cliente?.cliTelefono || cliente?.telefono || '-'
+}
+
+function clienteDireccion(cliente) {
+  return cliente?.cliDireccion || cliente?.direccion || '-'
 }
 
 function resetFieldErrors() {
@@ -295,8 +307,8 @@ onMounted(loadClientes)
                 <div class="admin-note">{{ cliente.cliTipoIdentificacion }}</div>
               </td>
               <td>{{ cliente.cliNumeroIdentificacion }}</td>
-              <td>{{ cliente.cliCorreoElectronico || '-' }}</td>
-              <td>{{ cliente.cliTelefono || '-' }}</td>
+              <td>{{ clienteCorreo(cliente) }}</td>
+              <td>{{ clienteTelefono(cliente) }}</td>
               <td>
                 <AdminStatusBadge v-bind="activeStateMeta(cliente.cliEstado)" />
               </td>
@@ -430,15 +442,15 @@ onMounted(loadClientes)
           <dl>
             <div>
               <dt>Correo</dt>
-              <dd>{{ selectedCliente.cliCorreoElectronico || '-' }}</dd>
+              <dd>{{ clienteCorreo(selectedCliente) }}</dd>
             </div>
             <div>
               <dt>Telefono</dt>
-              <dd>{{ selectedCliente.cliTelefono || '-' }}</dd>
+              <dd>{{ clienteTelefono(selectedCliente) }}</dd>
             </div>
             <div>
               <dt>Direccion</dt>
-              <dd>{{ selectedCliente.cliDireccion || '-' }}</dd>
+              <dd>{{ clienteDireccion(selectedCliente) }}</dd>
             </div>
           </dl>
         </article>

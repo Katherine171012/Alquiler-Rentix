@@ -122,6 +122,9 @@ const extraOptions = computed(() =>
   })),
 )
 
+const clienteById = computed(() => Object.fromEntries(clientes.value.map((cliente) => [String(cliente.idCliente), cliente])))
+const vehiculoById = computed(() => Object.fromEntries(vehiculos.value.map((vehiculo) => [String(vehiculo.idVehiculo), vehiculo])))
+
 const filteredReservas = computed(() => {
   const term = searchTerm.value.trim().toLowerCase()
   if (!term) return reservas.value
@@ -149,15 +152,33 @@ const detailTitle = computed(() => {
 })
 
 function nombreClienteReserva(reserva) {
-  return reserva?.cliente?.nombreCompleto?.trim() || clienteNombre(reserva?.cliente, reserva?.resIdCliente)
+  const cliente = reserva?.cliente ?? clienteById.value[String(reserva?.resIdCliente)]
+  return clienteNombre(cliente, reserva?.resIdCliente)
 }
 
 function nombreVehiculoReserva(reserva) {
-  return (
-    reserva?.vehiculo?.modeloVehiculo?.trim() ||
-    reserva?.vehiculo?.placaVehiculo ||
-    `Vehiculo #${reserva?.resIdVehiculo ?? reserva?.vehiculo?.idVehiculo ?? '-'}`
-  )
+  const vehiculo = reserva?.vehiculo ?? vehiculoById.value[String(reserva?.resIdVehiculo)]
+  return vehiculoNombre(vehiculo)
+}
+
+function clienteReserva(reserva) {
+  return reserva?.cliente ?? clienteById.value[String(reserva?.resIdCliente)] ?? null
+}
+
+function vehiculoReserva(reserva) {
+  return reserva?.vehiculo ?? vehiculoById.value[String(reserva?.resIdVehiculo)] ?? null
+}
+
+function clienteCorreo(cliente) {
+  return cliente?.correoElectronico || cliente?.cliCorreoElectronico || cliente?.correo || '-'
+}
+
+function clienteTelefono(cliente) {
+  return cliente?.telefono || cliente?.cliTelefono || '-'
+}
+
+function vehiculoCategoria(vehiculo) {
+  return vehiculo?.nombreCategoria || vehiculo?.categoria?.nombreCategoria || vehiculo?.placaVehiculo || '-'
 }
 
 function resetMessages() {
@@ -625,11 +646,11 @@ watch(
               </td>
               <td>
                 <strong>{{ nombreClienteReserva(reserva) }}</strong>
-                <div class="admin-note">{{ reserva.cliente?.correoElectronico || '-' }}</div>
+                <div class="admin-note">{{ clienteCorreo(clienteReserva(reserva)) }}</div>
               </td>
               <td>
                 <strong>{{ nombreVehiculoReserva(reserva) }}</strong>
-                <div class="admin-note">{{ reserva.vehiculo?.nombreCategoria || reserva.vehiculo?.placaVehiculo }}</div>
+                <div class="admin-note">{{ vehiculoCategoria(vehiculoReserva(reserva)) }}</div>
               </td>
               <td>
                 <div>{{ formatDate(reserva.resFechaInicio) }}</div>
@@ -1027,11 +1048,11 @@ watch(
             </div>
             <div>
               <dt>Correo</dt>
-              <dd>{{ selectedReserva.cliente?.correoElectronico || '-' }}</dd>
+              <dd>{{ clienteCorreo(clienteReserva(selectedReserva)) }}</dd>
             </div>
             <div>
               <dt>Telefono</dt>
-              <dd>{{ selectedReserva.cliente?.telefono || '-' }}</dd>
+              <dd>{{ clienteTelefono(clienteReserva(selectedReserva)) }}</dd>
             </div>
           </dl>
         </article>
@@ -1044,11 +1065,11 @@ watch(
             </div>
             <div>
               <dt>Placa</dt>
-              <dd>{{ selectedReserva.vehiculo?.placaVehiculo || '-' }}</dd>
+              <dd>{{ vehiculoReserva(selectedReserva)?.placaVehiculo || '-' }}</dd>
             </div>
             <div>
               <dt>Categoria</dt>
-              <dd>{{ selectedReserva.vehiculo?.nombreCategoria || '-' }}</dd>
+              <dd>{{ vehiculoCategoria(vehiculoReserva(selectedReserva)) }}</dd>
             </div>
           </dl>
         </article>

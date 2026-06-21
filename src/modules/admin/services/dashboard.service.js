@@ -62,16 +62,22 @@ function reservationStatusVariant(state) {
 }
 
 function vehicleCategoryLabel(vehicle) {
-  return vehicle?.nombreCategoria ?? vehicle?.categoriaNombre ?? `Categoria ${vehicle?.idCategoria ?? 'N/A'}`
+  return vehicle?.nombreCategoria ?? vehicle?.categoria?.nombreCategoria ?? vehicle?.categoriaNombre ?? `Categoria ${vehicle?.idCategoria ?? 'N/A'}`
 }
 
 function vehicleDisplayName(vehicle) {
-  return vehicle?.nombreVehiculo ?? `${vehicle?.modeloVehiculo ?? 'Vehiculo'} ${vehicle?.placaVehiculo ?? ''}`.trim()
+  const brand = vehicle?.nombreMarca ?? vehicle?.marca?.nombreMarca ?? ''
+  const model = vehicle?.modeloVehiculo ?? vehicle?.modelo ?? ''
+  const brandModel = `${brand} ${model}`.trim()
+  return vehicle?.nombreVehiculo || brandModel || vehicle?.placaVehiculo || `Vehiculo #${vehicle?.idVehiculo ?? '-'}`
 }
 
 function clientDisplayName(client) {
-  const fullName = `${client?.cliNombres ?? ''} ${client?.cliApellidos ?? ''}`.trim()
-  return fullName || client?.cliRazonSocial || `Cliente ${client?.idCliente ?? 'N/A'}`
+  const fullName =
+    client?.nombreCompleto?.trim() ||
+    client?.nombreCliente?.trim() ||
+    `${client?.cliNombres ?? client?.nombres ?? ''} ${client?.cliApellidos ?? client?.apellidos ?? ''}`.trim()
+  return fullName || client?.cliRazonSocial || `Cliente #${client?.idCliente ?? '-'}`
 }
 
 function buildLookupMap(items = [], keyName, getValue) {
@@ -176,15 +182,20 @@ async function fetchDashboardData() {
 
   const recentReservations = sortByDateDesc(reservas, parseReservationDate)
     .slice(0, 5)
-    .map((reservation) => ({
-      id: reservation?.idReserva,
-      vehicleName: vehicleNameById[reservation?.resIdVehiculo] ?? `Vehiculo #${reservation?.resIdVehiculo ?? '-'}`,
-      clientName: clientNameById[reservation?.resIdCliente] ?? `Cliente #${reservation?.resIdCliente ?? '-'}`,
-      amount: formatCurrency(reservation?.resTotal),
-      date: parseReservationDate(reservation),
-      status: reservationStatusLabel(reservation?.resEstado),
-      statusVariant: reservationStatusVariant(reservation?.resEstado),
-    }))
+    .map((reservation) => {
+      const vehicleName = reservation?.vehiculo ? vehicleDisplayName(reservation.vehiculo) : vehicleNameById[reservation?.resIdVehiculo]
+      const clientName = reservation?.cliente ? clientDisplayName(reservation.cliente) : clientNameById[reservation?.resIdCliente]
+
+      return {
+        id: reservation?.idReserva,
+        vehicleName: vehicleName ?? `Vehiculo #${reservation?.resIdVehiculo ?? '-'}`,
+        clientName: clientName ?? `Cliente #${reservation?.resIdCliente ?? '-'}`,
+        amount: formatCurrency(reservation?.resTotal),
+        date: parseReservationDate(reservation),
+        status: reservationStatusLabel(reservation?.resEstado),
+        statusVariant: reservationStatusVariant(reservation?.resEstado),
+      }
+    })
 
   return {
     kpis: {

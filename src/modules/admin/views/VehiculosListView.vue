@@ -59,8 +59,12 @@ function createVehiculoForm() {
   }
 }
 
-const marcaMap = computed(() => Object.fromEntries(marcas.value.map((item) => [item.idMarca, item.nombreMarca])))
-const categoriaMap = computed(() => Object.fromEntries(categorias.value.map((item) => [item.idCategoria, item.nombreCategoria])))
+const marcaMap = computed(() =>
+  Object.fromEntries(marcas.value.map((item) => [item.idMarca, item.nombreMarca ?? item.marNombre])),
+)
+const categoriaMap = computed(() =>
+  Object.fromEntries(categorias.value.map((item) => [item.idCategoria, item.nombreCategoria ?? item.catNombre])),
+)
 const localizacionMap = computed(() =>
   Object.fromEntries(localizaciones.value.map((item) => [item.idLocalizacion, item.nombreLocalizacion])),
 )
@@ -89,6 +93,19 @@ const filteredVehiculos = computed(() => {
 function resetMessages() {
   errorMessage.value = ''
   successMessage.value = ''
+}
+
+function nombreCategoriaVehiculo(vehiculo) {
+  return vehiculo?.nombreCategoria || vehiculo?.categoria?.nombreCategoria || categoriaMap.value[vehiculo?.idCategoria] || 'Sin categoria'
+}
+
+function nombreLocalizacionVehiculo(vehiculo) {
+  return (
+    vehiculo?.nombreLocalizacion ||
+    vehiculo?.localizacion?.nombreLocalizacion ||
+    localizacionMap.value[vehiculo?.localizacionActual] ||
+    'Sin localizacion'
+  )
 }
 
 async function loadVehiculos() {
@@ -295,9 +312,9 @@ onMounted(loadVehiculos)
         <div class="vehiculo-card__body">
           <div class="vehiculo-card__top">
             <div>
-              <div class="admin-note">{{ categoriaMap[vehiculo.idCategoria] || 'Sin categoria' }}</div>
+              <div class="admin-note">{{ nombreCategoriaVehiculo(vehiculo) }}</div>
               <h2>{{ vehiculoNombre(vehiculo) }}</h2>
-              <p>{{ vehiculo.placaVehiculo }} · {{ localizacionMap[vehiculo.localizacionActual] || 'Sin localizacion' }}</p>
+              <p>{{ vehiculo.placaVehiculo }} · {{ nombreLocalizacionVehiculo(vehiculo) }}</p>
             </div>
             <AdminStatusBadge v-bind="vehicleStateMeta(vehiculo.estadoVehiculo)" />
           </div>
@@ -500,7 +517,7 @@ onMounted(loadVehiculos)
             </div>
             <div>
               <dt>Localizacion</dt>
-              <dd>{{ localizacionMap[selectedVehiculo.localizacionActual] || '-' }}</dd>
+              <dd>{{ nombreLocalizacionVehiculo(selectedVehiculo) }}</dd>
             </div>
             <div>
               <dt>Precio</dt>
