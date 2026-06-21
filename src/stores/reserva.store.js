@@ -58,6 +58,11 @@ export const useReservaStore = defineStore('reserva', () => {
     idLocalizacionEntrega.value = entrega
   }
 
+  function setUbicacionesDesdeLocalizacion({ pais = '', ciudad = '', localizacion = '' } = {}) {
+    setUbicacionRecogida({ pais, ciudad, localizacion })
+    setUbicacionEntrega({ pais, ciudad, localizacion })
+  }
+
   function addConductor(conductor) {
     conductores.value.push({
       ...conductor,
@@ -150,6 +155,7 @@ export const useReservaStore = defineStore('reserva', () => {
     setUbicacionRecogida,
     setUbicacionEntrega,
     setLocalizaciones,
+    setUbicacionesDesdeLocalizacion,
     addConductor,
     removeConductor,
     setConductores,

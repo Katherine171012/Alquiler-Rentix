@@ -11,8 +11,8 @@ import {
   UserRound,
 } from 'lucide-vue-next'
 import { listarPaises } from '../../../api/paises.api'
-import { listarCiudadesPorPais } from '../../../api/ciudades.api'
-import { consultarLocalizaciones } from '../../../api/localizaciones.api'
+import { listarCiudadesPorPais, obtenerCiudad } from '../../../api/ciudades.api'
+import { consultarLocalizaciones, obtenerLocalizacion } from '../../../api/localizaciones.api'
 import { listarExtras } from '../../../api/extras.api'
 import { obtenerVehiculo } from '../../../api/vehiculos.api'
 import { verificarDisponibilidadVehiculo } from '../../../api/reservas.api'
@@ -33,6 +33,7 @@ const ciudadesRecogida = ref([])
 const ciudadesEntrega = ref([])
 const localizacionesRecogida = ref([])
 const localizacionesEntrega = ref([])
+const hidratandoUbicaciones = ref(false)
 const mostrandoFormularioConductor = ref(false)
 const cargandoDatosConductor = ref(false)
 const conductorFormAutollenado = ref(false)
@@ -119,10 +120,61 @@ function formatDateInput(value) {
   return String(value).slice(0, 10)
 }
 
+async function resolverUbicacionDesdeLocalizacion(idLocalizacion) {
+  if (!idLocalizacion) return null
+
+  const response = await obtenerLocalizacion(idLocalizacion)
+  const localizacion = response?.data ?? null
+  const idCiudad = localizacion?.idCiudad ?? localizacion?.ciudad?.idCiudad ?? ''
+  let idPais = localizacion?.idPais ?? localizacion?.ciudad?.idPais ?? ''
+
+  if (idCiudad && !idPais) {
+    const ciudadResponse = await obtenerCiudad(idCiudad)
+    idPais = ciudadResponse?.data?.idPais ?? ''
+  }
+
+  if (!idCiudad) return null
+
+  return {
+    pais: idPais ? String(idPais) : '',
+    ciudad: String(idCiudad),
+    localizacion: String(idLocalizacion),
+  }
+}
+
+async function hidratarUbicacionInicial() {
+  const idLocalizacion = route.query.idLocalizacion || route.query.idLocalizacionRecogida
+  const idPais = route.query.idPais || route.query.idPaisRecogida
+  const idCiudad = route.query.idCiudad || route.query.idCiudadRecogida
+  const debeCompletarUbicacion =
+    !reservaStore.idPaisRecogida ||
+    !reservaStore.idCiudadRecogida ||
+    !reservaStore.idLocalizacionRecogida ||
+    !reservaStore.idPaisEntrega ||
+    !reservaStore.idCiudadEntrega ||
+    !reservaStore.idLocalizacionEntrega
+
+  if (idLocalizacion && debeCompletarUbicacion) {
+    const ubicacion =
+      idCiudad && idPais
+        ? {
+            pais: idPais ? String(idPais) : '',
+            ciudad: idCiudad ? String(idCiudad) : '',
+            localizacion: String(idLocalizacion),
+          }
+        : await resolverUbicacionDesdeLocalizacion(idLocalizacion)
+
+    if (ubicacion) {
+      reservaStore.setUbicacionesDesdeLocalizacion(ubicacion)
+    }
+  }
+}
+
 async function cargarBaseReserva() {
   try {
     cargando.value = true
     error.value = ''
+    hidratandoUbicaciones.value = true
 
     if (!reservaStore.idVehiculo && route.query.idVehiculo) {
       reservaStore.idVehiculo = Number(route.query.idVehiculo)
@@ -134,6 +186,8 @@ async function cargarBaseReserva() {
         fin: formatDateInput(route.query.fechaFin),
       })
     }
+
+    await hidratarUbicacionInicial()
 
     if (!reservaStore.vehiculo && reservaStore.idVehiculo) {
       const vehiculoResponse = await obtenerVehiculo(reservaStore.idVehiculo)
@@ -160,6 +214,7 @@ async function cargarBaseReserva() {
   } catch (err) {
     error.value = err?.message ?? 'No se pudo cargar el flujo de reserva.'
   } finally {
+    hidratandoUbicaciones.value = false
     cargando.value = false
   }
 }
@@ -506,6 +561,7 @@ watch(
 watch(
   () => reservaStore.idPaisRecogida,
   async (idPais, previous) => {
+    if (hidratandoUbicaciones.value) return
     if (idPais === previous) return
     reservaStore.setUbicacionRecogida({ pais: idPais, ciudad: '', localizacion: '' })
     ciudadesRecogida.value = []
@@ -522,6 +578,7 @@ watch(
 watch(
   () => reservaStore.idCiudadRecogida,
   async (idCiudad, previous) => {
+    if (hidratandoUbicaciones.value) return
     if (idCiudad === previous) return
     reservaStore.setUbicacionRecogida({
       pais: reservaStore.idPaisRecogida,
@@ -541,6 +598,7 @@ watch(
 watch(
   () => reservaStore.idPaisEntrega,
   async (idPais, previous) => {
+    if (hidratandoUbicaciones.value) return
     if (idPais === previous) return
     reservaStore.setUbicacionEntrega({ pais: idPais, ciudad: '', localizacion: '' })
     ciudadesEntrega.value = []
@@ -557,6 +615,7 @@ watch(
 watch(
   () => reservaStore.idCiudadEntrega,
   async (idCiudad, previous) => {
+    if (hidratandoUbicaciones.value) return
     if (idCiudad === previous) return
     reservaStore.setUbicacionEntrega({
       pais: reservaStore.idPaisEntrega,

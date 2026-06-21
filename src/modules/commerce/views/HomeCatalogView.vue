@@ -81,6 +81,9 @@ async function buscarDisponibilidad() {
   try {
     cargando.value = true
     error.value = ''
+    const localizacionSeleccionada = localizaciones.value.find(
+      (localizacion) => String(localizacion.idLocalizacion) === String(filtros.value.ubicacion),
+    )
 
     await consultarDisponibilidadVehiculos({
       idLocalizacion: Number(filtros.value.ubicacion),
@@ -92,11 +95,18 @@ async function buscarDisponibilidad() {
       inicio: filtros.value.fechaInicio,
       fin: filtros.value.fechaFin,
     })
+    reservaStore.setUbicacionesDesdeLocalizacion({
+      pais: localizacionSeleccionada?.idPais ? String(localizacionSeleccionada.idPais) : '',
+      ciudad: localizacionSeleccionada?.idCiudad ? String(localizacionSeleccionada.idCiudad) : '',
+      localizacion: filtros.value.ubicacion,
+    })
 
     await router.push({
       path: '/vehiculos',
       query: {
         idLocalizacion: filtros.value.ubicacion,
+        idPais: localizacionSeleccionada?.idPais ? String(localizacionSeleccionada.idPais) : undefined,
+        idCiudad: localizacionSeleccionada?.idCiudad ? String(localizacionSeleccionada.idCiudad) : undefined,
         fechaInicio: filtros.value.fechaInicio,
         fechaFin: filtros.value.fechaFin,
       },

@@ -79,7 +79,17 @@ async function reservarAhora() {
 
   reservaStore.setVehiculoSeleccionado(vehiculo.value)
   reservaStore.setFechas({ inicio: fechaInicio.value, fin: fechaFin.value })
-  router.push({ path: '/reserva/datos', query: { idVehiculo: vehiculo.value.idVehiculo } })
+  router.push({
+    path: '/reserva/datos',
+    query: {
+      idVehiculo: vehiculo.value.idVehiculo,
+      idLocalizacion: route.query.idLocalizacion,
+      idPais: route.query.idPais,
+      idCiudad: route.query.idCiudad,
+      fechaInicio: fechaInicio.value,
+      fechaFin: fechaFin.value,
+    },
+  })
 }
 
 onMounted(async () => {

@@ -136,6 +136,21 @@ function irPaginaSiguiente() {
   cargarVehiculosFiltrados()
 }
 
+function detalleVehiculoRoute(vehiculo) {
+  return {
+    path: `/vehiculos/${vehiculo.idVehiculo}`,
+    query: contextoDisponibilidad.value
+      ? {
+          idLocalizacion: contextoDisponibilidad.value.idLocalizacion,
+          idPais: route.query.idPais,
+          idCiudad: route.query.idCiudad,
+          fechaInicio: contextoDisponibilidad.value.fechaInicio,
+          fechaFin: contextoDisponibilidad.value.fechaFin,
+        }
+      : {},
+  }
+}
+
 async function inicializarCatalogo() {
   contextoDisponibilidad.value =
     route.query.idLocalizacion && route.query.fechaInicio && route.query.fechaFin
@@ -263,7 +278,7 @@ watch(
           </small>
           <div class="card__footer">
             <strong>${{ vehiculo.precioBaseDia }}/dia</strong>
-            <RouterLink :to="`/vehiculos/${vehiculo.idVehiculo}`">Ver detalles</RouterLink>
+            <RouterLink :to="detalleVehiculoRoute(vehiculo)">Ver detalles</RouterLink>
           </div>
         </div>
       </article>
