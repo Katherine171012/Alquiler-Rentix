@@ -11,7 +11,7 @@ import {
   MapPin,
   UserRound,
 } from 'lucide-vue-next'
-import { crearConductor } from '../../../api/conductores.api'
+import { obtenerOCrearConductor } from '../../../api/conductores.api'
 import { obtenerLocalizacion } from '../../../api/localizaciones.api'
 import { asignarConductorReserva } from '../../../api/reservasConductor.api'
 import { listarConductoresReserva } from '../../../api/reservasConductor.api'
@@ -153,28 +153,30 @@ async function cargarAsignacionesReserva(idReserva) {
   }
 }
 
+function buildObtenerOCrearConductorPayload(conductor) {
+  return {
+    nombres: [conductor.conNombre1, conductor.conNombre2].filter(Boolean).join(' ').trim(),
+    apellidos: [conductor.conApellido1, conductor.conApellido2].filter(Boolean).join(' ').trim(),
+    tipoIdentificacion: conductor.tipoIdentificacion ?? 'CED',
+    numeroIdentificacion: String(conductor.numeroIdentificacion ?? '').trim(),
+    correo: String(conductor.correo ?? '').trim(),
+    telefono: String(conductor.telefono ?? '').trim(),
+    fechaVencimientoLicencia: conductor.fechaVencimientoLicencia,
+    edadConductor: Number(conductor.edadConductor || 18),
+  }
+}
+
 async function crearConductorYObtenerId(conductor) {
   if (conductor?.idConductor) {
     return Number(conductor.idConductor)
   }
 
-  const conductorCreado = await crearConductor({
-    tipoIdentificacion: conductor.tipoIdentificacion,
-    numeroIdentificacion: conductor.numeroIdentificacion,
-    conNombre1: conductor.conNombre1,
-    conNombre2: conductor.conNombre2 || null,
-    conApellido1: conductor.conApellido1,
-    conApellido2: conductor.conApellido2 || null,
-    numeroLicencia: conductor.numeroLicencia,
-    fechaVencimientoLicencia: conductor.fechaVencimientoLicencia,
-    edadConductor: Number(conductor.edadConductor || 18),
-    conTelefono: conductor.telefono || null,
-    conCorreo: conductor.correo || null,
-    creadoPorUsuario: authStore.user?.username ?? authStore.user?.correo ?? 'cliente-web',
-    origenRegistro: 'ECOMMERCE',
-  })
+  const response = await obtenerOCrearConductor(buildObtenerOCrearConductorPayload(conductor))
+  if (!response?.success) {
+    throw new Error(response?.message ?? 'No se pudo registrar el conductor.')
+  }
 
-  return Number(conductorCreado?.data?.idConductor ?? conductorCreado?.idConductor ?? 0) || null
+  return Number(response.data?.idConductor ?? 0) || null
 }
 
 async function persistirConductoresYExtras(idReserva, existingReservation = null) {

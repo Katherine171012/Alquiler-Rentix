@@ -16,6 +16,11 @@ export function crearConductor(payload) {
   return api.post('/conductores', payload)
 }
 
+/** Reutiliza conductor existente por cedula o crea uno nuevo (booking/ecommerce). */
+export function obtenerOCrearConductor(payload) {
+  return api.post('/conductores/obtener-o-crear', payload)
+}
+
 export function actualizarConductor(idConductor, payload) {
   return api.put(`/conductores/${idConductor}`, payload)
 }
